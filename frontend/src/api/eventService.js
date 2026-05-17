@@ -1,25 +1,10 @@
 import axiosInstance from './axiosInstance';
-import { DUMMY_EVENTS } from '../data/dummyData';
 
 export const eventService = {
   /** GET /events — paginated + filterable */
   getEvents: async ({ page = 0, size = 12, category = '', search = '', status = '' } = {}) => {
-    // ── DUMMY ──
-    return new Promise((resolve) => {
-      setTimeout(() => {
-        let filtered = [...DUMMY_EVENTS];
-        if (category) filtered = filtered.filter(e => e.category === category);
-        if (status)   filtered = filtered.filter(e => e.status   === status);
-        if (search)   filtered = filtered.filter(e =>
-          e.title.toLowerCase().includes(search.toLowerCase()) ||
-          e.description.toLowerCase().includes(search.toLowerCase())
-        );
-        resolve({ content: filtered, totalElements: filtered.length, totalPages: 1 });
-      }, 400);
-    });
-    // ── REAL ──
-    // const response = await axiosInstance.get('/events', { params: { page, size, category, search, status } });
-    // return response.data;
+    const response = await axiosInstance.get('/events', { params: { page, size, category, search, status } });
+    return response.data;
   },
 
   /** GET /events/:id */
@@ -31,7 +16,7 @@ export const eventService = {
         else reject(new Error('Event not found'));
       }, 300);
     });
-    // const response = await axiosInstance.get(`/events/${id}`);
+    const response = await axiosInstance.get(`/events/${id}`);
     // return response.data;
   },
 
