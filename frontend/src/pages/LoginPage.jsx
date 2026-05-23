@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Eye, EyeOff, Mail, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPass, setShowPass] = useState(false);
@@ -13,17 +14,34 @@ export default function LoginPage() {
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
 
+  const routeUser = (user) => {
+    if (user.role === 'ADMIN') navigate('/dashboard/admin');
+    else if (user.role === 'ORGANIZER') navigate('/dashboard/organizer');
+    else navigate('/dashboard/student');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       const user = await login(form);
-      if (user.role === 'ADMIN')     navigate('/dashboard/admin');
-      else if (user.role === 'ORGANIZER') navigate('/dashboard/organizer');
-      else navigate('/dashboard/student');
+      routeUser(user);
     } catch (err) {
-      setError(err.message || 'Login failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Login failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogleCredential = async (credential) => {
+    setError('');
+    setLoading(true);
+    try {
+      const user = await googleLogin(credential);
+      routeUser(user);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Google login failed. Please create an account first.');
     } finally {
       setLoading(false);
     }
@@ -40,10 +58,10 @@ export default function LoginPage() {
     <div className="min-h-screen flex" style={{ background: 'var(--clr-bg)' }}>
       {/* Left – Branding Panel */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden items-center justify-center p-12"
-        style={{ background: 'linear-gradient(135deg, #0D0F1A 0%, #1C1F35 100%)' }}>
-        <div className="absolute inset-0 hero-bg opacity-60" />
+        style={{ background: 'var(--clr-yellow)', borderRight: '4px solid var(--clr-border)' }}>
+        <div className="absolute inset-0 hero-bg opacity-40" />
         <div className="relative z-10 text-center max-w-md">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-glow-primary animate-float">
+          <div className="brand-mark w-16 h-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-6 shadow-lvl1 animate-float">
             <span className="material-symbols-rounded text-white text-3xl">event</span>
           </div>
           <h2 className="text-3xl font-black mb-4" style={{ color: 'var(--clr-text)' }}>Campus Event Hub</h2>
@@ -68,7 +86,7 @@ export default function LoginPage() {
         <div className="w-full max-w-md animate-slide-up">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <div className="brand-mark w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
               <span className="material-symbols-rounded text-white text-sm">event</span>
             </div>
             <span className="font-bold" style={{ color: 'var(--clr-text)' }}>Campus<span className="text-primary-500">Event</span>Hub</span>
@@ -76,6 +94,16 @@ export default function LoginPage() {
 
           <h1 className="text-headline-md font-bold mb-1" style={{ color: 'var(--clr-text)' }}>Welcome back</h1>
           <p className="text-body-sm mb-8" style={{ color: 'var(--clr-muted)' }}>Sign in to manage your events and tickets.</p>
+
+          <div className="mb-5">
+            <GoogleAuthButton label="signin_with" onCredential={handleGoogleCredential} disabled={loading} />
+          </div>
+
+          <div className="flex items-center gap-3 mb-5">
+            <span className="h-0.5 flex-1" style={{ background: 'var(--clr-border)' }} />
+            <span className="text-xs font-black uppercase" style={{ color: 'var(--clr-muted)' }}>or</span>
+            <span className="h-0.5 flex-1" style={{ background: 'var(--clr-border)' }} />
+          </div>
 
           {/* Demo credentials */}
           <div className="mb-6 p-3 rounded-lg border" style={{ background: 'var(--clr-surface-cont)', borderColor: 'var(--clr-border)' }}>

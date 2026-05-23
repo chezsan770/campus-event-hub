@@ -1,13 +1,22 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { StatCard, EventRow } from '../components/ui/components';
 import { useAuth } from '../context/AuthContext';
-import { DUMMY_EVENTS, ORGANIZER_STATS } from '../data/dummyData';
-
-const myEvents = DUMMY_EVENTS.filter(e => e.organizerId === 2);
+import { dashboardService } from '../api/dashboardService';
 
 export default function OrganizerDashboard() {
   const { user } = useAuth();
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    dashboardService.getOrganizerDashboard()
+      .then(setData)
+      .catch(() => setData(null));
+  }, []);
+
+  const stats = data?.stats || {};
+  const myEvents = data?.myEvents || [];
 
   return (
     <DashboardLayout
@@ -22,10 +31,10 @@ export default function OrganizerDashboard() {
     >
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon="event"        label="Total Events"    value={ORGANIZER_STATS.totalEvents}   color="blue"   />
-        <StatCard icon="event_available" label="Active Events" value={ORGANIZER_STATS.activeEvents} color="green"  />
-        <StatCard icon="group"        label="Total Attendees" value={ORGANIZER_STATS.totalAttendees.toLocaleString()} color="purple" />
-        <StatCard icon="star"         label="Avg. Rating"     value={`${ORGANIZER_STATS.avgRating} ★`} color="orange" />
+        <StatCard icon="event"        label="Total Events"    value={stats.totalEvents || 0}   color="blue"   />
+        <StatCard icon="event_available" label="Active Events" value={stats.activeEvents || 0} color="green"  />
+        <StatCard icon="group"        label="Total Attendees" value={(stats.totalAttendees || 0).toLocaleString()} color="purple" />
+        <StatCard icon="star"         label="Avg. Rating"     value={`${stats.avgRating || 0} / 5`} color="orange" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">

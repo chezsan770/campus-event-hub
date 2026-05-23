@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { eventService } from '../api/eventService';
-import { CATEGORIES } from '../data/dummyData';
+import { getEventArtStyle } from '../utils/eventArt';
 
 const INITIAL = {
   title: '', description: '', category: 'tech', date: '', time: '', endTime: '',
@@ -15,6 +15,13 @@ export default function CreateEventPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [categories, setCategories] = useState([]);
+
+  useEffect(() => {
+    eventService.getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   const handleChange = e => {
     const { name, value } = e.target;
@@ -26,7 +33,7 @@ export default function CreateEventPage() {
     setError('');
     setLoading(true);
     try {
-      const data = { ...form, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) };
+      const data = { ...form, imageGradient: selectedGradient, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) };
       await eventService.createEvent(data);
       navigate('/dashboard/organizer');
     } catch (err) {
@@ -37,12 +44,12 @@ export default function CreateEventPage() {
   };
 
   const gradients = [
-    { value: 'from-blue-600 to-purple-600',   label: 'Ocean' },
-    { value: 'from-purple-600 to-pink-600',    label: 'Dusk' },
-    { value: 'from-orange-500 to-red-500',     label: 'Sunset' },
-    { value: 'from-green-500 to-teal-500',     label: 'Forest' },
-    { value: 'from-cyan-500 to-blue-500',      label: 'Sky' },
-    { value: 'from-violet-600 to-blue-600',    label: 'Galaxy' },
+    { value: 'from-blue-600 to-purple-600',   label: 'Yellow' },
+    { value: 'from-purple-600 to-pink-600',   label: 'Coral' },
+    { value: 'from-orange-500 to-red-500',    label: 'Peach' },
+    { value: 'from-green-500 to-teal-500',    label: 'Mint' },
+    { value: 'from-cyan-500 to-blue-500',     label: 'Cream' },
+    { value: 'from-violet-600 to-blue-600',   label: 'Blush' },
   ];
   const [selectedGradient, setSelectedGradient] = useState(gradients[0].value);
 
@@ -56,7 +63,7 @@ export default function CreateEventPage() {
               <button
                 onClick={() => setStep(s)}
                 className={`w-8 h-8 rounded-full text-xs font-bold flex items-center justify-center transition-all ${
-                  s === step ? 'bg-primary-500 text-white shadow-glow-primary' :
+                  s === step ? 'bg-primary-500 text-white shadow-lvl1' :
                   s < step  ? 'bg-green-500 text-white' : ''
                 }`}
                 style={{ background: s > step ? 'var(--clr-surface-high)' : undefined, color: s > step ? 'var(--clr-muted)' : undefined }}
@@ -91,7 +98,7 @@ export default function CreateEventPage() {
                 <div className="space-y-1.5">
                   <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Category</label>
                   <select name="category" value={form.category} onChange={handleChange} className="input-field">
-                    {CATEGORIES.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
+                    {categories.map(c => <option key={c.id} value={c.id}>{c.label}</option>)}
                   </select>
                 </div>
                 <div className="space-y-1.5">
@@ -109,7 +116,12 @@ export default function CreateEventPage() {
                       key={g.value}
                       type="button"
                       onClick={() => setSelectedGradient(g.value)}
-                      className={`w-12 h-8 rounded-lg bg-gradient-to-br ${g.value} transition-all ${selectedGradient === g.value ? 'ring-2 ring-white ring-offset-2 ring-offset-dark-bg scale-110' : 'hover:scale-105'}`}
+                      className={`w-12 h-8 rounded-lg event-cover transition-all ${selectedGradient === g.value ? 'scale-110' : 'hover:scale-105'}`}
+                      style={{
+                        ...getEventArtStyle(g.value),
+                        outline: selectedGradient === g.value ? '3px solid var(--clr-coral)' : 'none',
+                        outlineOffset: '3px',
+                      }}
                       title={g.label}
                     />
                   ))}
@@ -177,8 +189,8 @@ export default function CreateEventPage() {
                 <h2 className="font-bold text-base mb-4" style={{ color: 'var(--clr-text)' }}>Event Preview</h2>
                 {/* Preview card */}
                 <div className="rounded-card overflow-hidden border" style={{ borderColor: 'var(--clr-border)' }}>
-                  <div className={`h-32 bg-gradient-to-br ${selectedGradient} flex items-end p-4`}>
-                    <span className="badge badge-blue">{CATEGORIES.find(c => c.id === form.category)?.label}</span>
+                  <div className="h-32 event-preview-cover flex items-end p-4" style={getEventArtStyle(selectedGradient)}>
+                    <span className="badge badge-blue">{categories.find(c => c.id === form.category)?.label || form.category}</span>
                   </div>
                   <div className="p-4" style={{ background: 'var(--clr-surface-cont)' }}>
                     <h3 className="font-bold text-base mb-1" style={{ color: 'var(--clr-text)' }}>{form.title || 'Untitled Event'}</h3>

@@ -1,16 +1,24 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { StatCard, EventRow } from '../components/ui/components';
 import { useAuth } from '../context/AuthContext';
-import { DUMMY_EVENTS, DUMMY_TICKETS, STUDENT_STATS } from '../data/dummyData';
-
-const upcomingEvents = DUMMY_EVENTS.filter(e => e.status === 'UPCOMING').slice(0, 3);
-const myRegisteredIds = [1, 3, 5];
-const myEvents = DUMMY_EVENTS.filter(e => myRegisteredIds.includes(e.id));
-const myTickets = DUMMY_TICKETS.filter(t => t.status === 'VALID');
+import { dashboardService } from '../api/dashboardService';
 
 export default function StudentDashboard() {
   const { user } = useAuth();
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    dashboardService.getStudentDashboard()
+      .then(setData)
+      .catch(() => setData(null));
+  }, []);
+
+  const stats = data?.stats || {};
+  const upcomingEvents = data?.upcomingEvents || [];
+  const myEvents = data?.myEvents || [];
+  const myTickets = (data?.myTickets || []).filter(ticket => ticket.status === 'VALID');
 
   return (
     <DashboardLayout
@@ -25,10 +33,10 @@ export default function StudentDashboard() {
     >
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon="event"              label="Events Attended"  value={STUDENT_STATS.eventsAttended} color="blue"   change="+2" />
-        <StatCard icon="calendar_today"     label="Upcoming Events"  value={STUDENT_STATS.upcomingEvents} color="purple" />
-        <StatCard icon="confirmation_number" label="Active Tickets"  value={STUDENT_STATS.activeTickets}  color="green"  />
-        <StatCard icon="star"               label="Points Earned"    value={STUDENT_STATS.pointsEarned}   color="orange" change="+60" />
+        <StatCard icon="event"              label="Events Attended"  value={stats.eventsAttended || 0} color="blue" />
+        <StatCard icon="calendar_today"     label="Upcoming Events"  value={stats.upcomingEvents || 0} color="purple" />
+        <StatCard icon="confirmation_number" label="Active Tickets"  value={stats.activeTickets || 0}  color="green"  />
+        <StatCard icon="star"               label="Points Earned"    value={stats.pointsEarned || 0}   color="orange" />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

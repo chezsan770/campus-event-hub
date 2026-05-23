@@ -8,10 +8,10 @@ export function StatCard({ icon, label, value, change, color = 'blue', iconBg })
   }[color] || 'stat-card-blue';
 
   const iconBgClass = iconBg || {
-    blue:   'bg-blue-500/15 text-blue-400',
-    purple: 'bg-purple-500/15 text-purple-400',
-    green:  'bg-green-500/15 text-green-400',
-    orange: 'bg-orange-500/15 text-orange-400',
+    blue:   'badge-blue',
+    purple: 'badge-purple',
+    green:  'badge-green',
+    orange: 'badge-orange',
   }[color];
 
   const isPositive = change && change.startsWith('+');
@@ -90,12 +90,14 @@ export function CategoryChip({ label, active, onClick }) {
   return (
     <button
       onClick={onClick}
-      className={`px-3 py-1.5 rounded-pill text-xs font-semibold transition-all duration-150 border ${
-        active
-          ? 'bg-primary-500 text-white border-primary-500 shadow-glow-primary'
-          : 'border-white/10 hover:border-primary-500/50 hover:bg-primary-500/10'
+      className={`px-3 py-1.5 rounded-pill text-xs font-black transition-all duration-150 border ${
+        active ? 'bg-primary-500 border-primary-500 shadow-lvl1' : ''
       }`}
-      style={{ color: active ? undefined : 'var(--clr-muted)' }}
+      style={{
+        color: active ? 'var(--clr-primary)' : 'var(--clr-muted)',
+        background: active ? 'var(--clr-yellow)' : 'var(--clr-cream)',
+        borderColor: 'var(--clr-border)',
+      }}
     >
       {label}
     </button>
@@ -105,15 +107,17 @@ export function CategoryChip({ label, active, onClick }) {
 // ─── EventRow ─────────────────────────────────────────────────────────────────
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin } from 'lucide-react';
+import { getEventArtStyle } from '../../utils/eventArt';
 
 export function EventRow({ event, showStatus }) {
   const statusColor = event.status === 'UPCOMING' ? 'badge-green' : event.status === 'PAST' ? 'badge-red' : 'badge-orange';
+  const coverStyle = getEventArtStyle(event.imageGradient);
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg hover:bg-white/5 transition-colors group">
-      {/* Gradient dot */}
-      <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${event.imageGradient} flex items-center justify-center shrink-0`}>
-        <span className="material-symbols-rounded text-white text-sm">event</span>
+    <div className="flex items-center gap-4 p-3 rounded-lg transition-colors group" style={{ border: '2px solid transparent' }}>
+      {/* Event mark */}
+      <div className="w-10 h-10 rounded-lg event-cover flex items-center justify-center shrink-0" style={coverStyle}>
+        <span className="material-symbols-rounded text-sm relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
       </div>
 
       {/* Info */}

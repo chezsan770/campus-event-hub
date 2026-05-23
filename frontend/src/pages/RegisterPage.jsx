@@ -1,23 +1,83 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Building } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Building, Image } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import GoogleAuthButton from '../components/auth/GoogleAuthButton';
+import { decodeGoogleCredential } from '../utils/googleCredential';
 
 const ROLES = [
-  { value: 'STUDENT',   label: 'Student',   icon: 'school',       desc: 'Discover and attend events' },
+  { value: 'STUDENT', label: 'Student', icon: 'school', desc: 'Discover and attend events' },
   { value: 'ORGANIZER', label: 'Organizer', icon: 'manage_accounts', desc: 'Create and manage events' },
 ];
 
+const initialGoogleForm = {
+  firstName: '',
+  lastName: '',
+  profilePicture: '',
+  organizerRequested: false,
+  organizerDetails: '',
+};
+
 export default function RegisterPage() {
-  const { register } = useAuth();
+  const { register, googleRegister } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'STUDENT', department: '' });
+  const [googleCredential, setGoogleCredential] = useState('');
+  const [googleProfile, setGoogleProfile] = useState(null);
+  const [googleForm, setGoogleForm] = useState(initialGoogleForm);
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
   const handleChange = e => setForm(f => ({ ...f, [e.target.name]: e.target.value }));
+  const handleGoogleChange = e => {
+    const { name, value, type, checked } = e.target;
+    setGoogleForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const routeUser = (user) => {
+    if (user.role === 'ADMIN') navigate('/dashboard/admin');
+    else if (user.role === 'ORGANIZER') navigate('/dashboard/organizer');
+    else navigate('/dashboard/student');
+  };
+
+  const handleGoogleCredential = (credential) => {
+    const profile = decodeGoogleCredential(credential);
+    setError('');
+    setGoogleCredential(credential);
+    setGoogleProfile(profile);
+    setGoogleForm({
+      firstName: profile.given_name || '',
+      lastName: profile.family_name || '',
+      profilePicture: profile.picture || '',
+      organizerRequested: false,
+      organizerDetails: '',
+    });
+  };
+
+  const handleGoogleRegister = async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!googleForm.firstName.trim() || !googleForm.lastName.trim()) {
+      setError('First name and last name are required.');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const user = await googleRegister({
+        idToken: googleCredential,
+        ...googleForm,
+      });
+      routeUser(user);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Google registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -30,7 +90,7 @@ export default function RegisterPage() {
       setSuccess(true);
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      setError(err.response?.data?.message || err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -53,10 +113,9 @@ export default function RegisterPage() {
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--clr-bg)' }}>
       <div className="w-full max-w-lg animate-slide-up">
-        {/* Header */}
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <div className="brand-mark w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center">
               <span className="material-symbols-rounded text-white text-sm">event</span>
             </div>
             <span className="font-bold" style={{ color: 'var(--clr-text)' }}>Campus<span className="text-primary-500">Event</span>Hub</span>
@@ -65,7 +124,90 @@ export default function RegisterPage() {
           <p className="text-body-sm" style={{ color: 'var(--clr-muted)' }}>Join thousands of students on campus</p>
         </div>
 
-        {/* Role Selector */}
+        {!googleCredential ? (
+          <div className="mb-5">
+            <GoogleAuthButton label="signup_with" onCredential={handleGoogleCredential} disabled={loading} />
+          </div>
+        ) : (
+          <form onSubmit={handleGoogleRegister} className="google-profile-card mb-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <img
+                src={googleForm.profilePicture || googleProfile?.picture}
+                alt=""
+                className="h-14 w-14 rounded-full border-[3px] object-cover"
+                style={{ borderColor: 'var(--clr-border)', background: 'var(--clr-yellow)' }}
+              />
+              <div className="min-w-0">
+                <p className="text-sm font-black" style={{ color: 'var(--clr-text)' }}>{googleProfile?.email}</p>
+                <button
+                  type="button"
+                  className="text-xs font-bold"
+                  style={{ color: 'var(--clr-muted)' }}
+                  onClick={() => {
+                    setGoogleCredential('');
+                    setGoogleProfile(null);
+                    setGoogleForm(initialGoogleForm);
+                  }}
+                >
+                  Use a different Google account
+                </button>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>First Name</label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--clr-muted)' }} />
+                  <input name="firstName" value={googleForm.firstName} onChange={handleGoogleChange} type="text" className="input-field pl-10" required />
+                </div>
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Last Name</label>
+                <input name="lastName" value={googleForm.lastName} onChange={handleGoogleChange} type="text" className="input-field" required />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Profile Picture</label>
+              <div className="relative">
+                <Image size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--clr-muted)' }} />
+                <input name="profilePicture" value={googleForm.profilePicture} onChange={handleGoogleChange} type="url" className="input-field pl-10" />
+              </div>
+            </div>
+
+            <label className="google-organizer-toggle">
+              <input
+                type="checkbox"
+                name="organizerRequested"
+                checked={googleForm.organizerRequested}
+                onChange={handleGoogleChange}
+              />
+              <span>Are you an organizer ?</span>
+            </label>
+
+            {googleForm.organizerRequested && (
+              <textarea
+                name="organizerDetails"
+                value={googleForm.organizerDetails}
+                onChange={handleGoogleChange}
+                className="input-field min-h-24"
+                placeholder="Organizer details"
+              />
+            )}
+
+            <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3 text-base">
+              {loading ? 'Creating Google account...' : 'Complete Google Account'}
+            </button>
+          </form>
+        )}
+
+        <div className="flex items-center gap-3 mb-5">
+          <span className="h-0.5 flex-1" style={{ background: 'var(--clr-border)' }} />
+          <span className="text-xs font-black uppercase" style={{ color: 'var(--clr-muted)' }}>or</span>
+          <span className="h-0.5 flex-1" style={{ background: 'var(--clr-border)' }} />
+        </div>
+
         <div className="grid grid-cols-2 gap-3 mb-6">
           {ROLES.map(r => (
             <button
@@ -93,7 +235,6 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Full Name */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Full Name</label>
             <div className="relative">
@@ -102,7 +243,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Email */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Email Address</label>
             <div className="relative">
@@ -111,7 +251,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Department */}
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Department / Club</label>
             <div className="relative">
@@ -120,7 +259,6 @@ export default function RegisterPage() {
             </div>
           </div>
 
-          {/* Password */}
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Password</label>

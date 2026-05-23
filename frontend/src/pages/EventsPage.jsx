@@ -1,10 +1,9 @@
-import { useState, useEffect } from 'react';
-import { Search, Filter, SlidersHorizontal } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, SlidersHorizontal } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import EventCard from '../components/ui/EventCard';
 import { CategoryChip } from '../components/ui/components';
 import { eventService } from '../api/eventService';
-import { CATEGORIES } from '../data/dummyData';
 
 export default function EventsPage() {
   const [events, setEvents] = useState([]);
@@ -12,12 +11,9 @@ export default function EventsPage() {
   const [search, setSearch] = useState('');
   const [activeCategory, setActiveCategory] = useState('');
   const [activeStatus, setActiveStatus] = useState('');
+  const [categories, setCategories] = useState([]);
 
-  useEffect(() => {
-    fetchEvents();
-  }, [activeCategory, activeStatus, search]);
-
-  const fetchEvents = async () => {
+  const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
       const data = await eventService.getEvents({ category: activeCategory, status: activeStatus, search });
@@ -25,7 +21,18 @@ export default function EventsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeCategory, activeStatus, search]);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchEvents();
+  }, [fetchEvents]);
+
+  useEffect(() => {
+    eventService.getCategories()
+      .then(setCategories)
+      .catch(() => setCategories([]));
+  }, []);
 
   const handleSearch = (e) => {
     e.preventDefault();
@@ -87,7 +94,7 @@ export default function EventsPage() {
 
           {/* Category chips */}
           <CategoryChip label="All Categories" active={activeCategory === ''} onClick={() => setActiveCategory('')} />
-          {CATEGORIES.map(cat => (
+          {categories.map(cat => (
             <CategoryChip
               key={cat.id}
               label={cat.label}

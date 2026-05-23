@@ -38,7 +38,7 @@ export default function Navbar() {
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-glow-primary group-hover:scale-105 transition-transform">
+            <div className="brand-mark w-8 h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-lvl1 group-hover:scale-105 transition-transform">
               <span className="material-symbols-rounded text-white text-sm">event</span>
             </div>
             <span className="font-bold text-base tracking-tight" style={{ color: 'var(--clr-text)' }}>
@@ -91,7 +91,7 @@ export default function Navbar() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-150 hover:bg-white/5"
                   >
-                    <div className="w-7 h-7 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-xs font-bold">
+                    <div className="brand-mark w-7 h-7 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-xs font-bold">
                       {user.avatar}
                     </div>
                     <span className="hidden sm:block text-sm font-medium" style={{ color: 'var(--clr-text)' }}>

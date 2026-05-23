@@ -1,20 +1,22 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useState } from 'react';
 import { authService } from '../api/authService';
 
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Rehydrate from localStorage on mount
-  useEffect(() => {
+  const [user, setUser] = useState(() => {
     const stored = localStorage.getItem('ceh_user');
     if (stored) {
-      try { setUser(JSON.parse(stored)); } catch {}
+      try {
+        return JSON.parse(stored);
+      } catch {
+        return null;
+      }
     }
-    setLoading(false);
-  }, []);
+    return null;
+  });
+  const [loading] = useState(false);
 
   const login = async (credentials) => {
     const { token, user: u } = await authService.login(credentials);
@@ -28,6 +30,22 @@ export function AuthProvider({ children }) {
     return authService.register(data);
   };
 
+  const googleLogin = async (idToken) => {
+    const { token, user: u } = await authService.googleLogin(idToken);
+    localStorage.setItem('ceh_token', token);
+    localStorage.setItem('ceh_user', JSON.stringify(u));
+    setUser(u);
+    return u;
+  };
+
+  const googleRegister = async (data) => {
+    const { token, user: u } = await authService.googleRegister(data);
+    localStorage.setItem('ceh_token', token);
+    localStorage.setItem('ceh_user', JSON.stringify(u));
+    setUser(u);
+    return u;
+  };
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -38,7 +56,7 @@ export function AuthProvider({ children }) {
   const isStudent   = user?.role === 'STUDENT';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin, isOrganizer, isStudent }}>
+    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, googleRegister, logout, isAdmin, isOrganizer, isStudent }}>
       {children}
     </AuthContext.Provider>
   );

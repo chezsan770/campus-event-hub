@@ -1,11 +1,24 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { StatCard, EventRow } from '../components/ui/components';
-import { DUMMY_EVENTS, ADMIN_STATS } from '../data/dummyData';
-
-const recentEvents = DUMMY_EVENTS.slice(0, 4);
+import { dashboardService } from '../api/dashboardService';
 
 export default function AdminDashboard() {
+  const [data, setData] = useState(null);
+
+  useEffect(() => {
+    dashboardService.getAdminDashboard()
+      .then(setData)
+      .catch(() => setData(null));
+  }, []);
+
+  const stats = data || {};
+  const monthlyGrowth = stats.monthlyGrowth || {};
+  const topCategories = stats.topCategories || [];
+  const recentActivity = stats.recentActivity || [];
+  const recentEvents = stats.recentEvents || [];
+
   return (
     <DashboardLayout
       title="Admin Dashboard"
@@ -21,10 +34,10 @@ export default function AdminDashboard() {
     >
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <StatCard icon="group"              label="Total Users"      value={ADMIN_STATS.totalUsers.toLocaleString()} color="blue"   change={ADMIN_STATS.monthlyGrowth.users} />
-        <StatCard icon="event"              label="Active Events"    value={ADMIN_STATS.activeEvents}                color="purple" change={ADMIN_STATS.monthlyGrowth.events} />
-        <StatCard icon="confirmation_number" label="Tickets Sold"   value={ADMIN_STATS.ticketsSold.toLocaleString()} color="green" change={ADMIN_STATS.monthlyGrowth.tickets} />
-        <StatCard icon="payments"           label="Platform Revenue" value={`$${(ADMIN_STATS.platformRevenue/1000).toFixed(1)}k`} color="orange" change={ADMIN_STATS.monthlyGrowth.revenue} />
+        <StatCard icon="group"              label="Total Users"      value={(stats.totalUsers || 0).toLocaleString()} color="blue"   change={monthlyGrowth.users} />
+        <StatCard icon="event"              label="Active Events"    value={stats.activeEvents || 0}                color="purple" change={monthlyGrowth.events} />
+        <StatCard icon="confirmation_number" label="Tickets Sold"   value={(stats.ticketsSold || 0).toLocaleString()} color="green" change={monthlyGrowth.tickets} />
+        <StatCard icon="payments"           label="Platform Revenue" value={`$${((stats.platformRevenue || 0)/1000).toFixed(1)}k`} color="orange" change={monthlyGrowth.revenue} />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -32,14 +45,14 @@ export default function AdminDashboard() {
         <div className="card p-5">
           <h2 className="font-bold text-base mb-4" style={{ color: 'var(--clr-text)' }}>Top Categories</h2>
           <div className="space-y-3">
-            {ADMIN_STATS.topCategories.map(cat => (
+            {topCategories.map(cat => (
               <div key={cat.name}>
                 <div className="flex items-center justify-between text-xs mb-1">
                   <span style={{ color: 'var(--clr-text)' }}>{cat.name}</span>
                   <span style={{ color: 'var(--clr-muted)' }}>{cat.count} events</span>
                 </div>
                 <div className="w-full h-1.5 rounded-pill overflow-hidden" style={{ background: 'var(--clr-surface-high)' }}>
-                  <div className="h-full rounded-pill bg-gradient-to-r from-primary-500 to-secondary-500" style={{ width: `${cat.percentage}%` }} />
+                  <div className="h-full rounded-pill bg-primary-500" style={{ width: `${cat.percentage}%` }} />
                 </div>
               </div>
             ))}
@@ -50,7 +63,7 @@ export default function AdminDashboard() {
         <div className="lg:col-span-2 card p-5">
           <h2 className="font-bold text-base mb-4" style={{ color: 'var(--clr-text)' }}>Recent Activity</h2>
           <div className="space-y-3">
-            {ADMIN_STATS.recentActivity.map((act, i) => {
+            {recentActivity.map((act, i) => {
               const iconMap = { EVENT_CREATED: 'add_circle', USER_REGISTERED: 'person_add', EVENT_PENDING: 'pending', TICKET_SOLD: 'confirmation_number' };
               const colorMap = { EVENT_CREATED: 'text-green-400 bg-green-500/10', USER_REGISTERED: 'text-blue-400 bg-blue-500/10', EVENT_PENDING: 'text-orange-400 bg-orange-500/10', TICKET_SOLD: 'text-purple-400 bg-purple-500/10' };
               return (

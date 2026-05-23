@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { Calendar, MapPin, Users, Clock, Share2, Heart, ArrowLeft, Check } from 'lucide-react';
+import { Calendar, MapPin, Users, Share2, Heart, ArrowLeft, Check } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import { eventService } from '../api/eventService';
 import { useAuth } from '../context/AuthContext';
-import { CATEGORIES } from '../data/dummyData';
+import { getEventArtStyle } from '../utils/eventArt';
 
 const categoryColors = { blue: 'badge-blue', purple: 'badge-purple', green: 'badge-green', orange: 'badge-orange' };
 
@@ -23,7 +23,7 @@ export default function EventDetailPage() {
       .then(setEvent)
       .catch(() => navigate('/events'))
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, navigate]);
 
   const handleRegister = async () => {
     if (!user) { navigate('/login'); return; }
@@ -51,9 +51,10 @@ export default function EventDetailPage() {
 
   if (!event) return null;
 
-  const cat = CATEGORIES.find(c => c.id === event.category);
+  const cat = { label: event.categoryLabel || event.category, color: event.categoryColor || 'blue' };
   const spotsLeft = event.capacity - event.registered;
   const fillPct = Math.min(100, Math.round((event.registered / event.capacity) * 100));
+  const coverStyle = getEventArtStyle(event.imageGradient);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
@@ -66,9 +67,9 @@ export default function EventDetailPage() {
         </Link>
 
         {/* Hero Banner */}
-        <div className={`relative h-56 md:h-72 rounded-hero bg-gradient-to-br ${event.imageGradient} overflow-hidden mb-6 flex items-end p-6`}>
+        <div className="event-detail-hero relative h-56 md:h-72 overflow-hidden mb-6 flex items-end p-6" style={coverStyle}>
           {event.featured && (
-            <span className="absolute top-4 right-4 badge bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+            <span className="absolute top-4 right-4 badge badge-orange">
               <span className="material-symbols-rounded text-xs">star</span> Featured
             </span>
           )}

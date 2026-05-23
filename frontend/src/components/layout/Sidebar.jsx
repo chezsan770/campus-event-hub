@@ -59,7 +59,7 @@ export default function Sidebar() {
       <div className="flex items-center justify-between px-4 h-16 border-b shrink-0" style={{ borderColor: 'var(--clr-border)' }}>
         {!collapsed && (
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-gradient-primary flex items-center justify-center">
+            <div className="brand-mark w-7 h-7 rounded-lg bg-gradient-primary flex items-center justify-center">
               <span className="material-symbols-rounded text-white text-xs">event</span>
             </div>
             <div className="leading-tight">
@@ -81,7 +81,7 @@ export default function Sidebar() {
       {!collapsed && user && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--clr-border)' }}>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
+            <div className="brand-mark w-9 h-9 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
               {user.avatar}
             </div>
             <div className="min-w-0">

@@ -1,0 +1,14 @@
+{
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Spring Boot-BackendEventHubApplication<backend_event_hub>",
+            "request": "launch",
+            "cwd": "${workspaceFolder}",
+            "mainClass": "com.chezsan.backend_event_hub.BackendEventHubApplication",
+            "projectName": "backend_event_hub",
+            "args": "",
+            "envFile": "${workspaceFolder}/.env"
+        }
+    ]
+}

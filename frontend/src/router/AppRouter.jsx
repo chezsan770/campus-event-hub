@@ -1,4 +1,5 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 
 import LandingPage       from '../pages/LandingPage';
@@ -28,18 +29,26 @@ function RequireRole({ children, roles }) {
 }
 
 // ─── My Tickets Page (simple list) ────────────────────────────────────────────
-import { DUMMY_TICKETS } from '../data/dummyData';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
+import { ticketService } from '../api/ticketService';
 
 function MyTicketsPage() {
+  const [tickets, setTickets] = useState([]);
+
+  useEffect(() => {
+    ticketService.getMyTickets()
+      .then(setTickets)
+      .catch(() => setTickets([]));
+  }, []);
+
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
       <Navbar />
       <div className="max-w-2xl mx-auto px-4 pt-24 pb-12">
         <h1 className="text-headline-md font-bold mb-6" style={{ color: 'var(--clr-text)' }}>My Tickets</h1>
         <div className="space-y-4">
-          {DUMMY_TICKETS.map(ticket => (
+          {tickets.map(ticket => (
             <Link
               key={ticket.id}
               to={`/tickets/${ticket.id}`}

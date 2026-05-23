@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
-import { MapPin, Clock, Users, Calendar } from 'lucide-react';
-import { CATEGORIES } from '../../data/dummyData';
+import { MapPin, Users, Calendar } from 'lucide-react';
+import { getEventArtStyle } from '../../utils/eventArt';
 
 const categoryColors = {
   blue:   'badge-blue',
@@ -11,19 +11,20 @@ const categoryColors = {
 };
 
 export default function EventCard({ event }) {
-  const cat = CATEGORIES.find(c => c.id === event.category);
+  const cat = { label: event.categoryLabel || event.category, color: event.categoryColor || 'blue' };
   const spotsLeft = event.capacity - event.registered;
   const isFull = spotsLeft <= 0;
   const isAlmostFull = spotsLeft <= 10 && !isFull;
   const fillPct = Math.min(100, Math.round((event.registered / event.capacity) * 100));
+  const coverStyle = getEventArtStyle(event.imageGradient);
 
   return (
     <div className="card group cursor-pointer flex flex-col overflow-hidden">
       {/* Gradient Header */}
-      <div className={`h-28 bg-gradient-to-br ${event.imageGradient} relative flex items-end p-3`}>
+      <div className="h-28 event-cover relative flex items-end p-3" style={coverStyle}>
         {/* Featured Badge */}
         {event.featured && (
-          <span className="absolute top-3 right-3 badge bg-yellow-400/20 text-yellow-300 border border-yellow-400/30">
+          <span className="absolute top-3 right-3 badge badge-orange">
             <span className="material-symbols-rounded text-xs">star</span> Featured
           </span>
         )}

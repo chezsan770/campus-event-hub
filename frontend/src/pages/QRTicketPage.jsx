@@ -66,7 +66,7 @@ export default function QRTicketPage() {
             <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'var(--clr-border)' }}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
+                  <div className="brand-mark w-6 h-6 rounded bg-gradient-primary flex items-center justify-center">
                     <span className="material-symbols-rounded text-white text-xs">event</span>
                   </div>
                   <span className="text-xs font-bold" style={{ color: 'var(--clr-muted)' }}>CAMPUS EVENT HUB</span>
