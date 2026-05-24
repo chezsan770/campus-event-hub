@@ -13,9 +13,11 @@ import java.util.Map;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final ImageStorageService imageStorageService;
 
-    public UserService(UserRepository userRepository) {
+    public UserService(UserRepository userRepository, ImageStorageService imageStorageService) {
         this.userRepository = userRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     public List<Map<String, Object>> getUsers() {
@@ -31,7 +33,16 @@ public class UserService {
         if (request.containsKey("name")) user.setName(value(request.get("name")));
         if (request.containsKey("email")) user.setEmail(value(request.get("email")));
         if (request.containsKey("department")) user.setDepartment(value(request.get("department")));
-        if (request.containsKey("avatar")) user.setAvatar(value(request.get("avatar")));
+        if (request.containsKey("avatar")) {
+            String storedAvatar = imageStorageService.storeAvatar(value(request.get("avatar")));
+            user.setAvatar(storedAvatar);
+            user.setProfilePicture(storedAvatar);
+        }
+        if (request.containsKey("profilePicture")) {
+            String storedAvatar = imageStorageService.storeAvatar(value(request.get("profilePicture")));
+            user.setAvatar(storedAvatar);
+            user.setProfilePicture(storedAvatar);
+        }
         return UserMapper.toMap(userRepository.save(user));
     }
 

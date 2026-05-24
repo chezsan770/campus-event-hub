@@ -30,11 +30,6 @@ export default function EventCard({ event }) {
             <span className="material-symbols-rounded text-xs">star</span> Featured
           </span>
         )}
-        {event.isRegistered && (
-          <span className={`absolute top-3 ${event.featured ? 'left-28' : 'left-3'} badge badge-green`}>
-            <span className="material-symbols-rounded text-xs">check_circle</span> Registered
-          </span>
-        )}
         {/* Category */}
         <span className={`${categoryColors[cat?.color] || 'badge-blue'} badge`}>
           {cat?.label || event.category}

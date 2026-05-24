@@ -7,6 +7,7 @@ import { ticketService } from '../api/ticketService';
 import EventCoverMedia from '../components/ui/EventCoverMedia';
 import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
 import { useAuth } from '../context/AuthContext';
+import UserAvatar from '../components/ui/UserAvatar';
 
 const STATUS_CONFIG = {
   VALID: { label: 'Valid',   color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  icon: 'check_circle' },
@@ -60,6 +61,11 @@ export default function QRTicketPage() {
 
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.VALID;
   const cover = ticketEventCover(ticket);
+  const holderUser = {
+    name: ticket.holderName,
+    avatar: ticket.holderAvatar,
+    profilePicture: ticket.holderProfilePicture,
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
@@ -114,12 +120,19 @@ export default function QRTicketPage() {
               {[
                 { label: 'TIME',     value: ticket.eventTime },
                 { label: 'LOCATION', value: ticket.location },
-                { label: 'HOLDER',   value: ticket.holderName },
+                { label: 'HOLDER',   value: ticket.holderName, avatar: holderUser },
                 { label: 'SEAT',     value: ticket.seatInfo },
               ].map(d => (
                 <div key={d.label}>
                   <p className="text-xs font-bold tracking-widest mb-0.5" style={{ color: 'var(--clr-muted)' }}>{d.label}</p>
-                  <p className="text-sm font-semibold" style={{ color: 'var(--clr-text)' }}>{d.value}</p>
+                  {d.avatar ? (
+                    <div className="flex items-center gap-2">
+                      <UserAvatar user={d.avatar} size="xs" />
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--clr-text)' }}>{d.value}</p>
+                    </div>
+                  ) : (
+                    <p className="text-sm font-semibold" style={{ color: 'var(--clr-text)' }}>{d.value}</p>
+                  )}
                 </div>
               ))}
             </div>

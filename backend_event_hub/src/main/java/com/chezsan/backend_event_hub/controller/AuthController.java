@@ -40,6 +40,14 @@ public class AuthController {
         return authService.me(authHeader);
     }
 
+    @PutMapping("/me/avatar")
+    public Map<String, Object> updateCurrentUserAvatar(
+            @RequestHeader(value = "Authorization", required = false) String authHeader,
+            @RequestBody Map<String, Object> request
+    ) {
+        return authService.updateCurrentUserAvatar(authHeader, request);
+    }
+
     @PostMapping("/logout")
     public Map<String, Object> logout() {
         return Map.of("message", "Logged out");

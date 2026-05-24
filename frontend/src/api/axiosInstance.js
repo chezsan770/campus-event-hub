@@ -3,10 +3,11 @@ import axios from 'axios';
 // ─── Base URL ────────────────────────────────────────────────────────────────
 // When connecting to Spring Boot, update this to:
 // const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
-const BASE_URL = 'http://localhost:8080/api';
+export const API_BASE_URL = 'http://localhost:8080/api';
+export const API_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, '');
 
 const axiosInstance = axios.create({
-  baseURL: BASE_URL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

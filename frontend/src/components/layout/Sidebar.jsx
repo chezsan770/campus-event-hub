@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ChevronLeft, ChevronRight, LogOut, HelpCircle } from 'lucide-react';
+import { Camera, ChevronLeft, ChevronRight, LogOut, HelpCircle } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import UserAvatar from '../ui/UserAvatar';
 
 // Nav items per role
 const STUDENT_NAV = [
@@ -38,10 +39,12 @@ function getNavItems(role) {
 }
 
 export default function Sidebar() {
-  const { user, logout } = useAuth();
+  const { user, logout, refreshUser, updateAvatar } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState('');
 
   const navItems = getNavItems(user?.role);
   const isActive = (to) => {
@@ -55,6 +58,41 @@ export default function Sidebar() {
     await logout();
     navigate('/');
   };
+
+  const handleAvatarChange = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!allowedTypes.includes(file.type)) {
+      setAvatarError('Use JPG, PNG, WEBP, or GIF.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setAvatarError('Image must be 5MB or smaller.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async () => {
+      setAvatarUploading(true);
+      setAvatarError('');
+      try {
+        await updateAvatar(String(reader.result || ''));
+      } catch (error) {
+        setAvatarError(error.response?.data?.message || error.response?.data?.error || error.message || 'Could not update avatar.');
+      } finally {
+        setAvatarUploading(false);
+      }
+    };
+    reader.onerror = () => setAvatarError('Could not read image.');
+    reader.readAsDataURL(file);
+  };
+
+  useEffect(() => {
+    refreshUser?.().catch(() => {});
+  }, [refreshUser]);
 
   return (
     <aside
@@ -86,9 +124,19 @@ export default function Sidebar() {
       {!collapsed && user && (
         <div className="px-4 py-3 border-b" style={{ borderColor: 'var(--clr-border)' }}>
           <div className="flex items-center gap-3">
-            <div className="brand-mark w-9 h-9 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-sm font-bold shrink-0">
-              {user.avatar}
-            </div>
+            <label className={`sidebar-avatar-upload ${avatarUploading ? 'is-loading' : ''}`} title="Upload profile picture">
+              <UserAvatar user={user} />
+              <span className="sidebar-avatar-upload-icon">
+                <Camera size={12} />
+              </span>
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                onChange={handleAvatarChange}
+                disabled={avatarUploading}
+              />
+            </label>
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate" style={{ color: 'var(--clr-text)' }}>{user.name}</p>
               <span className={`badge text-xs ${
@@ -99,6 +147,9 @@ export default function Sidebar() {
               </span>
             </div>
           </div>
+          {avatarError && (
+            <p className="mt-2 text-xs font-bold" style={{ color: 'var(--clr-coral)' }}>{avatarError}</p>
+          )}
         </div>
       )}
 

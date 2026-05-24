@@ -1,5 +1,5 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useContext, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import { authService } from '../api/authService';
 
 const AuthContext = createContext(null);
@@ -17,6 +17,36 @@ export function AuthProvider({ children }) {
     return null;
   });
   const [loading] = useState(false);
+
+  const refreshUser = useCallback(async () => {
+    const token = localStorage.getItem('ceh_token');
+    if (!token) return null;
+
+    const freshUser = await authService.getMe();
+    localStorage.setItem('ceh_user', JSON.stringify(freshUser));
+    setUser(freshUser);
+    return freshUser;
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const token = localStorage.getItem('ceh_token');
+    if (!token) return undefined;
+
+    authService.getMe()
+      .then((freshUser) => {
+        if (!active) return;
+        localStorage.setItem('ceh_user', JSON.stringify(freshUser));
+        setUser(freshUser);
+      })
+      .catch(() => {
+        // Keep the cached user if the refresh fails temporarily.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const login = async (credentials) => {
     const { token, user: u } = await authService.login(credentials);
@@ -46,6 +76,13 @@ export function AuthProvider({ children }) {
     return u;
   };
 
+  const updateAvatar = async (profilePicture) => {
+    const freshUser = await authService.updateAvatar(profilePicture);
+    localStorage.setItem('ceh_user', JSON.stringify(freshUser));
+    setUser(freshUser);
+    return freshUser;
+  };
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
@@ -56,7 +93,7 @@ export function AuthProvider({ children }) {
   const isStudent   = user?.role === 'STUDENT';
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, googleRegister, logout, isAdmin, isOrganizer, isStudent }}>
+    <AuthContext.Provider value={{ user, loading, login, register, googleLogin, googleRegister, logout, refreshUser, updateAvatar, isAdmin, isOrganizer, isStudent }}>
       {children}
     </AuthContext.Provider>
   );

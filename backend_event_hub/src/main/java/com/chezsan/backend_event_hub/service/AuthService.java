@@ -18,10 +18,12 @@ public class AuthService {
     private final UserRepository userRepository;
     private final RestClient restClient;
     private final String googleClientId;
+    private final ImageStorageService imageStorageService;
 
-    public AuthService(UserRepository userRepository, @Value("${google.client-id:}") String googleClientId) {
+    public AuthService(UserRepository userRepository, @Value("${google.client-id:}") String googleClientId, ImageStorageService imageStorageService) {
         this.userRepository = userRepository;
         this.googleClientId = googleClientId;
+        this.imageStorageService = imageStorageService;
         this.restClient = RestClient.create("https://oauth2.googleapis.com");
     }
 
@@ -53,7 +55,9 @@ public class AuthService {
         user.setPassword(stringValue(request.get("password")));
         user.setRole(parseRole(stringValue(request.getOrDefault("role", "STUDENT"))));
         user.setDepartment(stringValue(request.get("department")));
-        user.setAvatar(UserMapper.initials(user.getName()));
+        String storedAvatar = imageStorageService.storeAvatar(stringValue(request.get("profilePicture")));
+        user.setAvatar(storedAvatar);
+        user.setProfilePicture(storedAvatar);
 
         return authResponse(userRepository.save(user));
     }
@@ -74,7 +78,7 @@ public class AuthService {
 
         String firstName = stringValue(request.getOrDefault("firstName", googleProfile.get("given_name")));
         String lastName = stringValue(request.getOrDefault("lastName", googleProfile.get("family_name")));
-        String profilePicture = stringValue(request.getOrDefault("profilePicture", googleProfile.get("picture")));
+        String profilePicture = imageStorageService.storeAvatar(stringValue(request.getOrDefault("profilePicture", googleProfile.get("picture"))));
         boolean organizerRequested = booleanValue(request.getOrDefault("organizerRequested", false));
 
         user.setFirstName(firstName);
@@ -89,8 +93,8 @@ public class AuthService {
         }
         user.setAuthProvider("GOOGLE");
         user.setGoogleSubject(stringValue(googleProfile.get("sub")));
+        user.setAvatar(profilePicture);
         user.setProfilePicture(profilePicture);
-        user.setAvatar(UserMapper.initials(user.getName()));
         user.setDepartment(stringValue(request.get("department")));
         user.setOrganizerRequested(organizerRequested);
         if (isNewUser || user.getOrganizerApproved() == null) {
@@ -117,6 +121,19 @@ public class AuthService {
 
     public Map<String, Object> me(String authorizationHeader) {
         return UserMapper.toMap(currentUser(authorizationHeader));
+    }
+
+    public Map<String, Object> updateCurrentUserAvatar(String authorizationHeader, Map<String, Object> request) {
+        AppUser user = currentUser(authorizationHeader);
+        String avatarInput = stringValue(request.getOrDefault("profilePicture", request.get("avatar")));
+        String storedAvatar = imageStorageService.storeAvatar(avatarInput);
+        if (storedAvatar.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please upload a profile image");
+        }
+
+        user.setAvatar(storedAvatar);
+        user.setProfilePicture(storedAvatar);
+        return UserMapper.toMap(userRepository.save(user));
     }
 
     private Map<String, Object> authResponse(AppUser user) {

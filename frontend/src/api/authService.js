@@ -31,4 +31,9 @@ export const authService = {
     const response = await axiosInstance.get('/auth/me');
     return response.data;
   },
+
+  updateAvatar: async (profilePicture) => {
+    const response = await axiosInstance.put('/auth/me/avatar', { profilePicture });
+    return response.data;
+  },
 };
