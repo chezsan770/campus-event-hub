@@ -27,6 +27,8 @@ final class TicketMapper {
         out.put("coverZoom", event.getCoverZoom() == null ? 100 : event.getCoverZoom());
         out.put("holderName", ticket.getHolder().getName());
         out.put("holderEmail", ticket.getHolder().getEmail());
+        out.put("holderAvatar", UserMapper.imageValue(ticket.getHolder().getAvatar(), ticket.getHolder().getProfilePicture()));
+        out.put("holderProfilePicture", ticket.getHolder().getProfilePicture() == null ? "" : ticket.getHolder().getProfilePicture());
         out.put("issuedAt", ticket.getIssuedAt().toString());
         out.put("status", ticket.getStatus().name());
         out.put("seatInfo", ticket.getSeatInfo());

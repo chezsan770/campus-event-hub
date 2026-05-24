@@ -32,6 +32,8 @@ final class EventMapper {
         out.put("price", price.stripTrailingZeros());
         out.put("organizer", organizer == null ? "Campus Event Hub" : organizer.getName());
         out.put("organizerId", organizer == null ? null : organizer.getId());
+        out.put("organizerAvatar", organizer == null ? "" : UserMapper.imageValue(organizer.getAvatar(), organizer.getProfilePicture()));
+        out.put("organizerProfilePicture", organizer == null || organizer.getProfilePicture() == null ? "" : organizer.getProfilePicture());
         out.put("status", event.getStatus().name());
         out.put("featured", event.getFeatured());
         out.put("tags", event.getTags());

@@ -26,8 +26,10 @@ public class AppUser {
     @Column(nullable = false)
     private UserRole role = UserRole.STUDENT;
 
+    @Column(columnDefinition = "TEXT")
     private String avatar;
     private String department;
+    @Column(columnDefinition = "TEXT")
     private String profilePicture;
     private String authProvider = "LOCAL";
     private String googleSubject;

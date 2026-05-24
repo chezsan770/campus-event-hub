@@ -5,6 +5,7 @@ import com.chezsan.backend_event_hub.repository.CategoryRepository;
 import com.chezsan.backend_event_hub.repository.EventRepository;
 import com.chezsan.backend_event_hub.repository.TicketRepository;
 import com.chezsan.backend_event_hub.repository.UserRepository;
+import com.chezsan.backend_event_hub.service.ImageStorageService;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -20,12 +21,14 @@ public class DataSeeder implements CommandLineRunner {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
     private final TicketRepository ticketRepository;
+    private final ImageStorageService imageStorageService;
 
-    public DataSeeder(CategoryRepository categoryRepository, UserRepository userRepository, EventRepository eventRepository, TicketRepository ticketRepository) {
+    public DataSeeder(CategoryRepository categoryRepository, UserRepository userRepository, EventRepository eventRepository, TicketRepository ticketRepository, ImageStorageService imageStorageService) {
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
         this.eventRepository = eventRepository;
         this.ticketRepository = ticketRepository;
+        this.imageStorageService = imageStorageService;
     }
 
     @Override
@@ -34,6 +37,7 @@ public class DataSeeder implements CommandLineRunner {
         if (userRepository.count() == 0) {
             seedUsers();
         }
+        migrateAvatarInitials();
         if (eventRepository.count() == 0) {
             seedEvents();
         }
@@ -75,9 +79,44 @@ public class DataSeeder implements CommandLineRunner {
         user.setPassword("password123");
         user.setRole(role);
         user.setDepartment(department);
-        user.setAvatar(initials(name));
         user.setAuthProvider("LOCAL");
         return user;
+    }
+
+    private void migrateAvatarInitials() {
+        userRepository.findAll().forEach(user -> {
+            String avatar = user.getAvatar();
+            String profilePicture = user.getProfilePicture();
+            String source = isImageReference(avatar) ? avatar : profilePicture;
+            if (!isImageReference(source)) {
+                if (avatar != null && !avatar.isBlank()) {
+                    user.setAvatar("");
+                    userRepository.save(user);
+                }
+                return;
+            }
+
+            try {
+                String storedAvatar = imageStorageService.storeAvatar(source);
+                user.setAvatar(storedAvatar);
+                user.setProfilePicture(storedAvatar);
+                userRepository.save(user);
+            } catch (RuntimeException ignored) {
+                if (!source.startsWith("/uploads/")) {
+                    user.setAvatar("");
+                    userRepository.save(user);
+                }
+            }
+        });
+    }
+
+    private boolean isImageReference(String value) {
+        return value != null && (
+                value.startsWith("/uploads/")
+                        || value.startsWith("data:image/")
+                        || value.startsWith("http://")
+                        || value.startsWith("https://")
+        );
     }
 
     private void seedEvents() {
@@ -133,8 +172,4 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
 
-    private String initials(String name) {
-        String[] parts = name.trim().split("\\s+");
-        return (parts[0].substring(0, 1) + (parts.length > 1 ? parts[1].substring(0, 1) : "")).toUpperCase();
-    }
 }

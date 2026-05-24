@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
 import EventCoverMedia from '../components/ui/EventCoverMedia';
 import ConfirmDialog from '../components/ui/ConfirmDialog';
+import UserAvatar from '../components/ui/UserAvatar';
 
 const categoryColors = { blue: 'badge-blue', purple: 'badge-purple', green: 'badge-green', orange: 'badge-orange' };
 
@@ -103,6 +104,11 @@ export default function EventDetailPage() {
   const isPending = event.status === 'PENDING';
   const isRejected = event.status === 'REJECTED';
   const canModerate = user?.role === 'ADMIN' && isPending;
+  const organizerUser = {
+    name: event.organizer,
+    avatar: event.organizerAvatar,
+    profilePicture: event.organizerProfilePicture,
+  };
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
@@ -157,10 +163,10 @@ export default function EventDetailPage() {
                   { icon: <Calendar size={18} />, label: 'Date & Time', value: `${new Date(event.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })} • ${event.time} – ${event.endTime}` },
                   { icon: <MapPin size={18} />,    label: 'Venue',      value: `${event.location} • ${event.venue}` },
                   { icon: <Users size={18} />,     label: 'Capacity',   value: `${event.registered} / ${event.capacity} registered (${spotsLeft} spots left)` },
-                  { icon: <span className="material-symbols-rounded text-lg">manage_accounts</span>, label: 'Organizer', value: event.organizer },
+                  { icon: <UserAvatar user={organizerUser} size="sm" />, label: 'Organizer', value: event.organizer },
                 ].map(item => (
                   <div key={item.label} className="flex gap-4">
-                    <div className="w-8 h-8 rounded-lg bg-primary-500/10 text-primary-400 flex items-center justify-center shrink-0">{item.icon}</div>
+                    <div className="w-8 h-8 rounded-lg bg-primary-500/10 text-primary-400 flex items-center justify-center shrink-0 overflow-hidden">{item.icon}</div>
                     <div>
                       <p className="text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>{item.label}</p>
                       <p className="text-sm font-medium mt-0.5" style={{ color: 'var(--clr-text)' }}>{item.value}</p>

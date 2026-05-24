@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Menu, X, Sun, Moon, Bell, ChevronDown, LogOut, User, Settings } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
+import UserAvatar from '../ui/UserAvatar';
 
 export default function Navbar() {
   const { user, logout, isAdmin, isOrganizer } = useAuth();
@@ -91,9 +92,7 @@ export default function Navbar() {
                     onClick={() => setProfileOpen(!profileOpen)}
                     className="flex items-center gap-2 px-3 py-1.5 rounded-lg transition-all duration-150 hover:bg-white/5"
                   >
-                    <div className="brand-mark w-7 h-7 rounded-pill bg-gradient-primary flex items-center justify-center text-white text-xs font-bold">
-                      {user.avatar}
-                    </div>
+                    <UserAvatar user={user} size="sm" />
                     <span className="hidden sm:block text-sm font-medium" style={{ color: 'var(--clr-text)' }}>
                       {user.name.split(' ')[0]}
                     </span>

@@ -49,20 +49,97 @@ function ticketEventCover(ticket) {
 function MyTicketsPage() {
   const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
+  const [loadingTickets, setLoadingTickets] = useState(true);
+  const [ticketsError, setTicketsError] = useState('');
 
   useEffect(() => {
     ticketService.getMyTickets()
       .then(setTickets)
-      .catch(() => setTickets([]));
+      .catch(() => {
+        setTickets([]);
+        setTicketsError('We could not load your tickets right now.');
+      })
+      .finally(() => setLoadingTickets(false));
   }, []);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
       {!user && <Navbar />}
-      <div className={`max-w-2xl mx-auto px-4 ${user ? 'pt-8' : 'pt-24'} pb-12`}>
-        <h1 className="text-headline-md font-bold mb-6" style={{ color: 'var(--clr-text)' }}>My Tickets</h1>
+      <div className={`max-w-4xl mx-auto px-4 ${user ? 'pt-8' : 'pt-24'} pb-12`}>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between mb-6">
+          <div>
+            <h1 className="text-headline-md font-black" style={{ color: 'var(--clr-text)' }}>My Tickets</h1>
+            <p className="text-sm font-semibold mt-1" style={{ color: 'var(--clr-muted)' }}>
+              Your registered event passes and QR tickets appear here.
+            </p>
+          </div>
+          {tickets.length > 0 && (
+            <Link to="/events" className="btn-primary px-5 py-2.5">
+              <span className="material-symbols-rounded text-base">add_circle</span>
+              Explore Events
+            </Link>
+          )}
+        </div>
+
+        {loadingTickets && (
+          <div className="card p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-lg shimmer" />
+              <div className="flex-1 space-y-3">
+                <div className="h-4 w-2/3 rounded shimmer" />
+                <div className="h-3 w-1/2 rounded shimmer" />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!loadingTickets && ticketsError && (
+          <div className="card p-6 flex flex-col sm:flex-row gap-4 sm:items-center sm:justify-between">
+            <div>
+              <h2 className="text-lg font-black mb-1" style={{ color: 'var(--clr-text)' }}>Tickets are taking a break</h2>
+              <p className="text-sm font-semibold" style={{ color: 'var(--clr-muted)' }}>{ticketsError}</p>
+            </div>
+            <button type="button" className="btn-secondary px-5 py-2.5" onClick={() => window.location.reload()}>
+              Retry
+            </button>
+          </div>
+        )}
+
+        {!loadingTickets && !ticketsError && tickets.length === 0 && (
+          <section className="empty-tickets-card">
+            <div className="empty-ticket-art" aria-hidden="true">
+              <div className="empty-ticket-stub empty-ticket-stub-a">
+                <span className="material-symbols-rounded">confirmation_number</span>
+              </div>
+              <div className="empty-ticket-stub empty-ticket-stub-b">
+                <span className="material-symbols-rounded">qr_code_2</span>
+              </div>
+              <div className="empty-ticket-main">
+                <span className="material-symbols-rounded">event_available</span>
+              </div>
+            </div>
+            <div className="empty-tickets-copy">
+              <span className="badge badge-orange">No tickets yet</span>
+              <h2>Pick an event and your ticket will land here.</h2>
+              <p>
+                Once you register for an approved event, this page will show your pass, QR code, venue, time, and ticket status.
+              </p>
+              <div className="empty-tickets-actions">
+                <Link to="/events" className="btn-primary px-6 py-3">
+                  <span className="material-symbols-rounded text-base">search</span>
+                  Browse Events
+                </Link>
+                <Link to="/dashboard/student" className="btn-ghost px-6 py-3">
+                  <span className="material-symbols-rounded text-base">home</span>
+                  Dashboard
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
         <div className="space-y-4">
-          {tickets.map(ticket => (
+          {!loadingTickets && !ticketsError && tickets.map(ticket => (
             <Link
               key={ticket.id}
               to={`/tickets/${ticket.id}`}

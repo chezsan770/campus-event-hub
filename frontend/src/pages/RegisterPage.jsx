@@ -18,10 +18,12 @@ const initialGoogleForm = {
   organizerDetails: '',
 };
 
+const AVATAR_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 export default function RegisterPage() {
   const { register, googleRegister } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'STUDENT', department: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', confirmPassword: '', role: 'STUDENT', department: '', profilePicture: '' });
   const [googleCredential, setGoogleCredential] = useState('');
   const [googleProfile, setGoogleProfile] = useState(null);
   const [googleForm, setGoogleForm] = useState(initialGoogleForm);
@@ -34,6 +36,33 @@ export default function RegisterPage() {
   const handleGoogleChange = e => {
     const { name, value, type, checked } = e.target;
     setGoogleForm(f => ({ ...f, [name]: type === 'checkbox' ? checked : value }));
+  };
+
+  const readAvatarFile = (file, onLoad) => {
+    if (!file) return;
+    if (!AVATAR_IMAGE_TYPES.includes(file.type)) {
+      setError('Please upload a JPG, PNG, WEBP, or GIF avatar.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      onLoad(String(reader.result || ''));
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleAvatarUpload = (event) => {
+    readAvatarFile(event.target.files?.[0], (imageUrl) => {
+      setForm(f => ({ ...f, profilePicture: imageUrl }));
+    });
+  };
+
+  const handleGoogleAvatarUpload = (event) => {
+    readAvatarFile(event.target.files?.[0], (imageUrl) => {
+      setGoogleForm(f => ({ ...f, profilePicture: imageUrl }));
+    });
   };
 
   const routeUser = (user) => {
@@ -131,14 +160,18 @@ export default function RegisterPage() {
         ) : (
           <form onSubmit={handleGoogleRegister} className="google-profile-card mb-6 space-y-4">
             <div className="flex items-center gap-3">
-              <img
-                src={googleForm.profilePicture || googleProfile?.picture}
-                alt=""
-                className="h-14 w-14 rounded-full border-[3px] object-cover"
-                style={{ borderColor: 'var(--clr-border)', background: 'var(--clr-yellow)' }}
-              />
+              <label className="avatar-upload-preview cursor-pointer" title="Upload profile avatar">
+                {googleForm.profilePicture || googleProfile?.picture ? (
+                  <img src={googleForm.profilePicture || googleProfile?.picture} alt="" />
+                ) : (
+                  <span className="material-symbols-rounded">person</span>
+                )}
+                <span className="avatar-upload-icon material-symbols-rounded">photo_camera</span>
+                <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleGoogleAvatarUpload} />
+              </label>
               <div className="min-w-0">
                 <p className="text-sm font-black" style={{ color: 'var(--clr-text)' }}>{googleProfile?.email}</p>
+                <p className="text-xs mb-1" style={{ color: 'var(--clr-muted)' }}>Click avatar to upload a custom image</p>
                 <button
                   type="button"
                   className="text-xs font-bold"
@@ -168,13 +201,7 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Profile Picture</label>
-              <div className="relative">
-                <Image size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--clr-muted)' }} />
-                <input name="profilePicture" value={googleForm.profilePicture} onChange={handleGoogleChange} type="url" className="input-field pl-10" />
-              </div>
-            </div>
+            <input name="profilePicture" value={googleForm.profilePicture} onChange={handleGoogleChange} type="url" className="sr-only" aria-hidden="true" tabIndex={-1} />
 
             <label className="google-organizer-toggle">
               <input
@@ -235,6 +262,33 @@ export default function RegisterPage() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="avatar-upload-panel">
+            <label className="avatar-upload-preview avatar-upload-preview-lg cursor-pointer" title="Upload profile avatar">
+              {form.profilePicture ? (
+                <img src={form.profilePicture} alt="" />
+              ) : (
+                <span className="material-symbols-rounded">person</span>
+              )}
+              <span className="avatar-upload-icon material-symbols-rounded">photo_camera</span>
+              <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleAvatarUpload} />
+            </label>
+            <div className="min-w-0">
+              <p className="text-sm font-black" style={{ color: 'var(--clr-text)' }}>Profile Avatar</p>
+              <p className="text-xs mt-1" style={{ color: 'var(--clr-muted)' }}>Upload a JPG, PNG, WEBP, or GIF for your account photo.</p>
+              {form.profilePicture && (
+                <button
+                  type="button"
+                  className="text-xs font-black mt-2"
+                  style={{ color: 'var(--clr-primary)' }}
+                  onClick={() => setForm(f => ({ ...f, profilePicture: '' }))}
+                >
+                  Remove image
+                </button>
+              )}
+            </div>
+            <Image size={18} className="shrink-0" style={{ color: 'var(--clr-muted)' }} />
+          </div>
+
           <div className="space-y-1.5">
             <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Full Name</label>
             <div className="relative">
