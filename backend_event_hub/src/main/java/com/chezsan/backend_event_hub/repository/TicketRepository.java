@@ -10,4 +10,5 @@ public interface TicketRepository extends JpaRepository<Ticket, String> {
     List<Ticket> findByHolderIdOrderByIssuedAtDesc(Long holderId);
     List<Ticket> findByHolderIdAndStatusOrderByIssuedAtDesc(Long holderId, TicketStatus status);
     long countByStatus(TicketStatus status);
+    void deleteByEventId(Long eventId);
 }

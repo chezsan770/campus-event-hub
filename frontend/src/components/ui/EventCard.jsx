@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { MapPin, Users, Calendar } from 'lucide-react';
-import { getEventArtStyle } from '../../utils/eventArt';
+import { getEventCoverStyle, hasCustomCover } from '../../utils/eventArt';
+import EventCoverMedia from './EventCoverMedia';
 
 const categoryColors = {
   blue:   'badge-blue',
@@ -16,16 +17,22 @@ export default function EventCard({ event }) {
   const isFull = spotsLeft <= 0;
   const isAlmostFull = spotsLeft <= 10 && !isFull;
   const fillPct = Math.min(100, Math.round((event.registered / event.capacity) * 100));
-  const coverStyle = getEventArtStyle(event.imageGradient);
+  const coverStyle = getEventCoverStyle(event);
 
   return (
-    <div className="card group cursor-pointer flex flex-col overflow-hidden">
+    <Link to={`/events/${event.id}`} className="card group cursor-pointer flex flex-col overflow-hidden no-underline">
       {/* Gradient Header */}
-      <div className="h-28 event-cover relative flex items-end p-3" style={coverStyle}>
+      <div className={`h-28 event-cover relative flex items-end p-3 ${hasCustomCover(event) ? 'has-custom-cover' : ''}`} style={coverStyle}>
+        <EventCoverMedia event={event} />
         {/* Featured Badge */}
         {event.featured && (
-          <span className="absolute top-3 right-3 badge badge-orange">
+          <span className="absolute top-3 left-3 badge badge-orange">
             <span className="material-symbols-rounded text-xs">star</span> Featured
+          </span>
+        )}
+        {event.isRegistered && (
+          <span className={`absolute top-3 ${event.featured ? 'left-28' : 'left-3'} badge badge-green`}>
+            <span className="material-symbols-rounded text-xs">check_circle</span> Registered
           </span>
         )}
         {/* Category */}
@@ -81,14 +88,11 @@ export default function EventCard({ event }) {
           <span className="text-xs font-semibold text-primary-400">
             {event.price === 0 ? 'FREE' : `$${event.price}`}
           </span>
-          <Link
-            to={`/events/${event.id}`}
-            className="btn-primary py-1.5 px-3 text-xs"
-          >
-            View Details
-          </Link>
+          <span className={`${event.isRegistered ? 'btn-secondary' : 'btn-primary'} py-1.5 px-3 text-xs`}>
+            {event.isRegistered ? 'Registered' : 'View Details'}
+          </span>
         </div>
       </div>
-    </div>
+    </Link>
   );
 }

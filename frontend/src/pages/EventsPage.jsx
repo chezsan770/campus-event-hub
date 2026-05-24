@@ -4,8 +4,11 @@ import Navbar from '../components/layout/Navbar';
 import EventCard from '../components/ui/EventCard';
 import { CategoryChip } from '../components/ui/components';
 import { eventService } from '../api/eventService';
+import { ticketService } from '../api/ticketService';
+import { useAuth } from '../context/AuthContext';
 
 export default function EventsPage() {
+  const { user } = useAuth();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -16,12 +19,19 @@ export default function EventsPage() {
   const fetchEvents = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await eventService.getEvents({ category: activeCategory, status: activeStatus, search });
-      setEvents(data.content);
+      const [data, tickets] = await Promise.all([
+        eventService.getEvents({ category: activeCategory, status: activeStatus, search }),
+        user ? ticketService.getMyTickets().catch(() => []) : Promise.resolve([]),
+      ]);
+      const registeredEventIds = new Set(tickets.map(ticket => Number(ticket.eventId)));
+      setEvents((data.content || []).map(event => ({
+        ...event,
+        isRegistered: registeredEventIds.has(Number(event.id)),
+      })));
     } finally {
       setLoading(false);
     }
-  }, [activeCategory, activeStatus, search]);
+  }, [activeCategory, activeStatus, search, user]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -47,10 +57,10 @@ export default function EventsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
-      <Navbar />
+      {!user && <Navbar />}
 
       {/* Page Header */}
-      <div className="pt-20 pb-8 px-4" style={{ background: 'var(--clr-surface)' }}>
+      <div className={`${user ? 'pt-8' : 'pt-20'} pb-8 px-4`} style={{ background: 'var(--clr-surface)' }}>
         <div className="max-w-7xl mx-auto">
           <h1 className="text-headline-lg font-black mt-4 mb-1" style={{ color: 'var(--clr-text)' }}>Explore Events</h1>
           <p className="text-body-sm" style={{ color: 'var(--clr-muted)' }}>Discover what's happening around campus</p>

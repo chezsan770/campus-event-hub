@@ -45,4 +45,9 @@ export const eventService = {
     const response = await axiosInstance.post(`/events/${id}/approve`);
     return response.data;
   },
+
+  rejectEvent: async (id) => {
+    const response = await axiosInstance.post(`/events/${id}/reject`);
+    return response.data;
+  },
 };

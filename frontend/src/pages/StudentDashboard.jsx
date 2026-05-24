@@ -4,6 +4,18 @@ import DashboardLayout from '../components/layout/DashboardLayout';
 import { StatCard, EventRow } from '../components/ui/components';
 import { useAuth } from '../context/AuthContext';
 import { dashboardService } from '../api/dashboardService';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
+import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+
+function ticketEventCover(ticket) {
+  return {
+    imageGradient: ticket.imageGradient,
+    coverImage: ticket.coverImage,
+    coverPositionX: ticket.coverPositionX,
+    coverPositionY: ticket.coverPositionY,
+    coverZoom: ticket.coverZoom,
+  };
+}
 
 export default function StudentDashboard() {
   const { user } = useAuth();
@@ -16,9 +28,13 @@ export default function StudentDashboard() {
   }, []);
 
   const stats = data?.stats || {};
-  const upcomingEvents = data?.upcomingEvents || [];
-  const myEvents = data?.myEvents || [];
   const myTickets = (data?.myTickets || []).filter(ticket => ticket.status === 'VALID');
+  const registeredEventIds = new Set(myTickets.map(ticket => Number(ticket.eventId)));
+  const upcomingEvents = (data?.upcomingEvents || []).map(event => ({
+    ...event,
+    isRegistered: registeredEventIds.has(Number(event.id)),
+  }));
+  const myEvents = data?.myEvents || [];
 
   return (
     <DashboardLayout
@@ -62,9 +78,19 @@ export default function StudentDashboard() {
               <Link
                 key={ticket.id}
                 to={`/tickets/${ticket.id}`}
-                className="block p-3 rounded-lg border hover:border-primary-500/50 transition-all group"
+                className="flex gap-3 p-3 rounded-lg border hover:border-primary-500/50 transition-all group"
                 style={{ borderColor: 'var(--clr-border)', background: 'var(--clr-surface-cont)' }}
               >
+                <div
+                  className={`ticket-event-thumb event-cover ${hasCustomCover(ticketEventCover(ticket)) ? 'has-custom-cover' : ''}`}
+                  style={getEventCoverStyle(ticketEventCover(ticket))}
+                >
+                  <EventCoverMedia event={ticketEventCover(ticket)} />
+                  {!hasCustomCover(ticketEventCover(ticket)) && (
+                    <span className="material-symbols-rounded text-sm relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold line-clamp-1 group-hover:text-primary-400 transition-colors" style={{ color: 'var(--clr-text)' }}>
                   {ticket.eventTitle}
                 </p>
@@ -75,6 +101,7 @@ export default function StudentDashboard() {
                 <div className="flex items-center justify-between mt-2">
                   <span className="badge badge-green text-xs">VALID</span>
                   <span className="text-xs text-primary-400">View QR →</span>
+                </div>
                 </div>
               </Link>
             ))}

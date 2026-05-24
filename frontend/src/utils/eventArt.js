@@ -13,3 +13,32 @@ export function getEventArtStyle(token) {
 
   return map[token] || map['from-blue-600 to-purple-600'];
 }
+
+export function getEventCoverStyle(eventOrToken) {
+  if (eventOrToken && typeof eventOrToken === 'object' && eventOrToken.coverImage) {
+    return {
+      backgroundColor: 'var(--clr-surface-cont)',
+    };
+  }
+
+  const token = typeof eventOrToken === 'string' ? eventOrToken : eventOrToken?.imageGradient;
+  return getEventArtStyle(token);
+}
+
+export function hasCustomCover(event) {
+  return Boolean(event?.coverImage);
+}
+
+export function getEventCoverMediaStyle(event) {
+  const zoom = Math.max(Number(event?.coverZoom) || 100, 100);
+  const rawPositionX = Number(event?.coverPositionX);
+  const rawPositionY = Number(event?.coverPositionY);
+  const positionX = Math.min(100, Math.max(0, Number.isFinite(rawPositionX) ? rawPositionX : 50));
+  const positionY = Math.min(100, Math.max(0, Number.isFinite(rawPositionY) ? rawPositionY : 50));
+
+  return {
+    objectPosition: `${positionX}% ${positionY}%`,
+    transform: `scale(${zoom / 100})`,
+    transformOrigin: `${positionX}% ${positionY}%`,
+  };
+}

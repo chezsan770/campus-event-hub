@@ -108,14 +108,11 @@ public class AuthService {
 
     public AppUser currentUser(String authorizationHeader) {
         Long userId = parseToken(authorizationHeader);
-        if (userId != null) {
-            return userRepository.findById(userId)
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user token"));
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Missing or invalid user token");
         }
-
-        return userRepository.findByEmailIgnoreCase("alex@campus.edu")
-                .orElseGet(() -> userRepository.findAll().stream().findFirst()
-                        .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No users exist")));
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid user token"));
     }
 
     public Map<String, Object> me(String authorizationHeader) {

@@ -44,7 +44,12 @@ export default function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
 
   const navItems = getNavItems(user?.role);
-  const isActive = (to) => location.pathname === to;
+  const isActive = (to) => {
+    const [path, hash] = to.split('#');
+    if (hash) return location.pathname === path && location.hash === `#${hash}`;
+    if (path === '/events') return location.pathname === '/events' || location.pathname.startsWith('/events/');
+    return location.pathname === path;
+  };
 
   const handleLogout = async () => {
     await logout();

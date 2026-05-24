@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { ArrowRight, Plus, ChevronRight, MapPin, Calendar, Users } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import { eventService } from '../api/eventService';
-import { getEventArtStyle } from '../utils/eventArt';
+import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
 
 /* ── Data ───────────────────────────────────────────────── */
 const FEATURES = [
@@ -42,15 +43,16 @@ function getCatLabel(catId) {
 
 /* ── Inline event-card for the featured grid ─────────────── */
 function FeaturedCard({ event, large = false }) {
-  const artStyle = getEventArtStyle(event.imageGradient);
+  const artStyle = getEventCoverStyle(event);
 
   if (large) {
     return (
       <Link
         to={`/events/${event.id}`}
-        className="featured-card-large event-art group"
+        className={`featured-card-large event-art group ${hasCustomCover(event) ? 'has-custom-cover' : ''}`}
         style={artStyle}
       >
+        <EventCoverMedia event={event} />
         {/* Overlay */}
         <div className="featured-card-overlay" />
 
@@ -90,7 +92,9 @@ function FeaturedCard({ event, large = false }) {
       to={`/events/${event.id}`}
       className="featured-card-small group"
     >
-      <div className="featured-card-small-img event-art" style={artStyle} />
+      <div className={`featured-card-small-img event-art ${hasCustomCover(event) ? 'has-custom-cover' : ''}`} style={artStyle}>
+        <EventCoverMedia event={event} />
+      </div>
       <div className="featured-card-small-body">
         <p className="featured-card-small-meta">
           <Calendar size={11} style={{ display:'inline', marginRight:3, verticalAlign:'middle' }} />
@@ -221,9 +225,10 @@ export default function LandingPage() {
 
             {/* Hero event card inside panel */}
             <div
-              className="lhp-event-img event-art"
-              style={getEventArtStyle(heroEvent?.imageGradient)}
+              className={`lhp-event-img event-art ${hasCustomCover(heroEvent) ? 'has-custom-cover' : ''}`}
+              style={getEventCoverStyle(heroEvent)}
             >
+              <EventCoverMedia event={heroEvent} />
               <div className="lhp-event-img-overlay" />
               <div className="lhp-event-img-content">
                 <span className="lhp-event-cat">Technology</span>
@@ -235,7 +240,9 @@ export default function LandingPage() {
             {sideEvents.map(ev => {
               return (
                 <div key={ev.id} className="lhp-mini-card">
-                  <div className="lhp-mini-thumb event-art" style={getEventArtStyle(ev.imageGradient)} />
+                  <div className={`lhp-mini-thumb event-art ${hasCustomCover(ev) ? 'has-custom-cover' : ''}`} style={getEventCoverStyle(ev)}>
+                    <EventCoverMedia event={ev} />
+                  </div>
                   <div className="lhp-mini-info">
                     <p className="lhp-mini-title">{ev.title}</p>
                     <p className="lhp-mini-meta">

@@ -11,6 +11,7 @@ import java.util.List;
 
 public interface EventRepository extends JpaRepository<Event, Long>, JpaSpecificationExecutor<Event> {
     List<Event> findTop4ByOrderByIdDesc();
+    List<Event> findByStatusOrderByIdDesc(EventStatus status);
     List<Event> findByOrganizerIdOrderByDateAsc(Long organizerId);
     long countByStatus(EventStatus status);
     long countByCategoryId(String categoryId);

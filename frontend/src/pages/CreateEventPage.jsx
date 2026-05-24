@@ -1,21 +1,33 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { eventService } from '../api/eventService';
-import { getEventArtStyle } from '../utils/eventArt';
+import { useAuth } from '../context/AuthContext';
+import { getEventArtStyle, getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
 
 const INITIAL = {
   title: '', description: '', category: 'tech', date: '', time: '', endTime: '',
   location: '', venue: '', capacity: 100, price: 0, tags: '',
 };
 
+const COVER_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+
 export default function CreateEventPage() {
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [form, setForm] = useState(INITIAL);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [categories, setCategories] = useState([]);
+  const [coverImage, setCoverImage] = useState('');
+  const [coverPositionX, setCoverPositionX] = useState(50);
+  const [coverPositionY, setCoverPositionY] = useState(50);
+  const [coverZoom, setCoverZoom] = useState(100);
+  const [coverImageSize, setCoverImageSize] = useState({ width: 0, height: 0 });
+  const [coverFrameSize, setCoverFrameSize] = useState({ width: 0, height: 0 });
+  const coverPreviewRef = useRef(null);
 
   useEffect(() => {
     eventService.getCategories()
@@ -28,14 +40,47 @@ export default function CreateEventPage() {
     setForm(f => ({ ...f, [name]: value }));
   };
 
+  const handleCoverUpload = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!COVER_IMAGE_TYPES.includes(file.type)) {
+      setError('Please upload a JPG, PNG, WEBP, or GIF cover image.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const imageUrl = String(reader.result || '');
+      const image = new Image();
+      image.onload = () => {
+        setCoverImageSize({ width: image.naturalWidth, height: image.naturalHeight });
+      };
+      image.src = imageUrl;
+      setCoverImage(imageUrl);
+      setCoverPositionX(50);
+      setCoverPositionY(50);
+      setCoverZoom(100);
+      setError('');
+    };
+    reader.readAsDataURL(file);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const data = { ...form, imageGradient: selectedGradient, tags: form.tags.split(',').map(t => t.trim()).filter(Boolean) };
+      const data = {
+        ...form,
+        imageGradient: selectedGradient,
+        coverImage,
+        coverPositionX: effectiveCoverPositionX,
+        coverPositionY: effectiveCoverPositionY,
+        coverZoom: effectiveCoverZoom,
+        tags: form.tags.split(',').map(t => t.trim()).filter(Boolean),
+      };
       await eventService.createEvent(data);
-      navigate('/dashboard/organizer');
+      navigate(user?.role === 'ADMIN' ? '/dashboard/admin' : '/dashboard/organizer');
     } catch (err) {
       setError(err.message || 'Failed to create event');
     } finally {
@@ -52,9 +97,51 @@ export default function CreateEventPage() {
     { value: 'from-violet-600 to-blue-600',   label: 'Blush' },
   ];
   const [selectedGradient, setSelectedGradient] = useState(gradients[0].value);
+  const coverAspect = coverImageSize.width && coverImageSize.height
+    ? coverImageSize.width / coverImageSize.height
+    : 1;
+  const frameAspect = coverFrameSize.width && coverFrameSize.height
+    ? coverFrameSize.width / coverFrameSize.height
+    : 1;
+  const minCoverZoom = 100;
+  const effectiveCoverZoom = coverImage ? Math.max(coverZoom, minCoverZoom) : coverZoom;
+  const coverImageOverflowsX = coverAspect > frameAspect;
+  const coverImageOverflowsY = coverAspect < frameAspect;
+  const renderedCoverWidth = coverImageOverflowsX
+    ? coverFrameSize.height * coverAspect * (effectiveCoverZoom / 100)
+    : coverFrameSize.width * (effectiveCoverZoom / 100);
+  const renderedCoverHeight = coverImageOverflowsY
+    ? (coverFrameSize.width / coverAspect) * (effectiveCoverZoom / 100)
+    : coverFrameSize.height * (effectiveCoverZoom / 100);
+  const canMoveCoverX = Boolean(coverImage && renderedCoverWidth > coverFrameSize.width + 1);
+  const canMoveCoverY = Boolean(coverImage && renderedCoverHeight > coverFrameSize.height + 1);
+  const effectiveCoverPositionX = canMoveCoverX ? coverPositionX : 50;
+  const effectiveCoverPositionY = canMoveCoverY ? coverPositionY : 50;
+  const maxCoverZoom = Math.max(200, minCoverZoom + 100);
+  const coverPreview = {
+    imageGradient: selectedGradient,
+    coverImage,
+    coverPositionX: effectiveCoverPositionX,
+    coverPositionY: effectiveCoverPositionY,
+    coverZoom: effectiveCoverZoom,
+  };
+
+  useEffect(() => {
+    const frame = coverPreviewRef.current;
+    if (!frame) return undefined;
+
+    const updateFrameSize = () => {
+      setCoverFrameSize({ width: frame.clientWidth, height: frame.clientHeight });
+    };
+    updateFrameSize();
+
+    const observer = new ResizeObserver(updateFrameSize);
+    observer.observe(frame);
+    return () => observer.disconnect();
+  }, [coverImage]);
 
   return (
-    <DashboardLayout title="Create New Event" subtitle="Fill in the details to publish your event">
+    <DashboardLayout title="Create New Event" subtitle="Fill in the details and submit it for admin review">
       <div className="max-w-3xl mx-auto">
         {/* Step Indicator */}
         <div className="flex items-center gap-3 mb-8">
@@ -128,6 +215,75 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
+              <div className="cover-upload-panel">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <label className="block text-xs font-semibold" style={{ color: 'var(--clr-muted)' }}>Custom Cover Image</label>
+                    <p className="text-xs mt-1" style={{ color: 'var(--clr-muted)' }}>Upload a JPG, PNG, WEBP, or GIF and adjust the crop for event cards and detail pages.</p>
+                  </div>
+                  <label className="btn-secondary px-4 py-2 text-xs cursor-pointer">
+                    <span className="material-symbols-rounded text-base">upload</span>
+                    Upload Image
+                    <input type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={handleCoverUpload} />
+                  </label>
+                </div>
+
+                {coverImage && (
+                  <div className="mt-4 space-y-4">
+                    <div
+                      ref={coverPreviewRef}
+                      className="cover-crop-preview has-custom-cover"
+                      style={getEventCoverStyle(coverPreview)}
+                    >
+                      <EventCoverMedia event={coverPreview} />
+                      <span className="badge badge-blue">{categories.find(c => c.id === form.category)?.label || form.category}</span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <label className="cover-range">
+                        <span>Horizontal</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={effectiveCoverPositionX}
+                          disabled={!canMoveCoverX}
+                          onChange={e => canMoveCoverX && setCoverPositionX(Number(e.target.value))}
+                        />
+                      </label>
+                      <label className="cover-range">
+                        <span>Vertical</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={effectiveCoverPositionY}
+                          disabled={!canMoveCoverY}
+                          onChange={e => canMoveCoverY && setCoverPositionY(Number(e.target.value))}
+                        />
+                      </label>
+                      <label className="cover-range">
+                        <span>Zoom</span>
+                        <input type="range" min={minCoverZoom} max={maxCoverZoom} value={effectiveCoverZoom} onChange={e => setCoverZoom(Number(e.target.value))} />
+                      </label>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="btn-ghost px-4 py-2 text-xs"
+                      onClick={() => {
+                        setCoverImage('');
+                        setCoverImageSize({ width: 0, height: 0 });
+                        setCoverFrameSize({ width: 0, height: 0 });
+                      }}
+                    >
+                      <span className="material-symbols-rounded text-base">hide_image</span>
+                      Use flat cover style
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <div className="flex justify-end">
                 <button type="button" onClick={() => setStep(2)} className="btn-primary px-6">Continue →</button>
               </div>
@@ -189,7 +345,11 @@ export default function CreateEventPage() {
                 <h2 className="font-bold text-base mb-4" style={{ color: 'var(--clr-text)' }}>Event Preview</h2>
                 {/* Preview card */}
                 <div className="rounded-card overflow-hidden border" style={{ borderColor: 'var(--clr-border)' }}>
-                  <div className="h-32 event-preview-cover flex items-end p-4" style={getEventArtStyle(selectedGradient)}>
+                  <div
+                    className={`h-32 event-preview-cover flex items-end p-4 ${hasCustomCover(coverPreview) ? 'has-custom-cover' : ''}`}
+                    style={getEventCoverStyle(coverPreview)}
+                  >
+                    <EventCoverMedia event={coverPreview} />
                     <span className="badge badge-blue">{categories.find(c => c.id === form.category)?.label || form.category}</span>
                   </div>
                   <div className="p-4" style={{ background: 'var(--clr-surface-cont)' }}>
@@ -205,6 +365,10 @@ export default function CreateEventPage() {
                 </div>
               </div>
 
+              <div className="p-4 rounded-card border text-sm font-semibold" style={{ background: 'var(--clr-yellow)', borderColor: 'var(--clr-border)', color: 'var(--clr-primary)' }}>
+                Organizer events are sent to the admin review queue first. Students can register only after approval.
+              </div>
+
               {error && <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-xs text-red-400">{error}</div>}
 
               <div className="flex justify-between">
@@ -216,10 +380,10 @@ export default function CreateEventPage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
                       </svg>
-                      Publishing...
+                      Submitting...
                     </span>
                   ) : (
-                    <><span className="material-symbols-rounded text-base">publish</span> Publish Event</>
+                    <><span className="material-symbols-rounded text-base">approval</span> Submit for Review</>
                   )}
                 </button>
               </div>

@@ -1,23 +1,74 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '../components/layout/DashboardLayout';
 import { StatCard, EventRow } from '../components/ui/components';
 import { dashboardService } from '../api/dashboardService';
+import { eventService } from '../api/eventService';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
+  const [approvingId, setApprovingId] = useState(null);
+  const [rejectingId, setRejectingId] = useState(null);
+  const [deletingId, setDeletingId] = useState(null);
+  const [deleteError, setDeleteError] = useState('');
+  const [pendingDelete, setPendingDelete] = useState(null);
 
-  useEffect(() => {
+  const fetchDashboard = useCallback(() => {
     dashboardService.getAdminDashboard()
       .then(setData)
       .catch(() => setData(null));
   }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+    const interval = window.setInterval(fetchDashboard, 15000);
+    return () => window.clearInterval(interval);
+  }, [fetchDashboard]);
+
+  const handleApprove = async (eventId) => {
+    setDeleteError('');
+    setApprovingId(eventId);
+    try {
+      await eventService.approveEvent(eventId);
+      await fetchDashboard();
+    } finally {
+      setApprovingId(null);
+    }
+  };
+
+  const handleReject = async (eventId) => {
+    setDeleteError('');
+    setRejectingId(eventId);
+    try {
+      await eventService.rejectEvent(eventId);
+      await fetchDashboard();
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!pendingDelete) return;
+    setDeleteError('');
+    setDeletingId(pendingDelete.id);
+    try {
+      await eventService.deleteEvent(pendingDelete.id);
+      await fetchDashboard();
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || 'Could not delete event.');
+    } finally {
+      setDeletingId(null);
+      setPendingDelete(null);
+    }
+  };
 
   const stats = data || {};
   const monthlyGrowth = stats.monthlyGrowth || {};
   const topCategories = stats.topCategories || [];
   const recentActivity = stats.recentActivity || [];
   const recentEvents = stats.recentEvents || [];
+  const pendingEvents = stats.pendingEvents || [];
 
   return (
     <DashboardLayout
@@ -36,8 +87,70 @@ export default function AdminDashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <StatCard icon="group"              label="Total Users"      value={(stats.totalUsers || 0).toLocaleString()} color="blue"   change={monthlyGrowth.users} />
         <StatCard icon="event"              label="Active Events"    value={stats.activeEvents || 0}                color="purple" change={monthlyGrowth.events} />
+        <StatCard icon="notifications_active" label="Pending Reviews" value={stats.pendingEventsCount || 0} color="orange" />
         <StatCard icon="confirmation_number" label="Tickets Sold"   value={(stats.ticketsSold || 0).toLocaleString()} color="green" change={monthlyGrowth.tickets} />
-        <StatCard icon="payments"           label="Platform Revenue" value={`$${((stats.platformRevenue || 0)/1000).toFixed(1)}k`} color="orange" change={monthlyGrowth.revenue} />
+      </div>
+
+      <div className="card p-5 mb-6">
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+          <div>
+            <h2 className="font-bold text-base" style={{ color: 'var(--clr-text)' }}>Organizer Event Reviews</h2>
+            <p className="text-xs mt-1" style={{ color: 'var(--clr-muted)' }}>
+              New organizer events stay hidden from students until approved.
+            </p>
+          </div>
+          <span className="badge badge-orange">
+            {pendingEvents.length} pending
+          </span>
+        </div>
+
+        {pendingEvents.length === 0 ? (
+          <div className="p-4 rounded-card text-sm font-semibold" style={{ background: 'var(--clr-surface-cont)', color: 'var(--clr-muted)' }}>
+            No event approvals waiting right now.
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {deleteError && (
+              <div className="p-3 rounded-card border text-sm font-semibold text-red-400" style={{ background: 'var(--clr-surface-cont)', borderColor: 'var(--clr-border)' }}>
+                {deleteError}
+              </div>
+            )}
+            {pendingEvents.map(event => (
+              <div key={event.id} className="admin-review-row">
+                <EventRow event={event} showStatus />
+                <div className="admin-review-actions">
+                  <button
+                    type="button"
+                    className="btn-primary px-4 py-2 text-xs"
+                    disabled={approvingId === event.id || rejectingId === event.id}
+                    onClick={() => handleApprove(event.id)}
+                  >
+                    <span className="material-symbols-rounded text-base">verified</span>
+                    {approvingId === event.id ? 'Approving...' : 'Approve'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-reject px-4 py-2 text-xs"
+                    disabled={approvingId === event.id || rejectingId === event.id}
+                    onClick={() => handleReject(event.id)}
+                  >
+                    <span className="material-symbols-rounded text-base">block</span>
+                    {rejectingId === event.id ? 'Rejecting...' : 'Reject'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn-ghost px-4 py-2 text-xs"
+                    disabled={approvingId === event.id || rejectingId === event.id || deletingId === event.id}
+                    onClick={() => setPendingDelete(event)}
+                  >
+                    <span className="material-symbols-rounded text-base">delete</span>
+                    {deletingId === event.id ? 'Deleting...' : 'Delete'}
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
@@ -116,9 +229,38 @@ export default function AdminDashboard() {
       <div className="card p-5">
         <h2 className="font-bold text-base mb-4" style={{ color: 'var(--clr-text)' }}>Platform Activity (30 Days)</h2>
         <div className="space-y-1">
-          {recentEvents.map(event => <EventRow key={event.id} event={event} showStatus />)}
+          {deleteError && (
+            <div className="p-3 mb-3 rounded-card border text-sm font-semibold text-red-400" style={{ background: 'var(--clr-surface-cont)', borderColor: 'var(--clr-border)' }}>
+              {deleteError}
+            </div>
+          )}
+          {recentEvents.map(event => (
+            <div key={event.id} className="admin-review-row">
+              <EventRow event={event} showStatus />
+              <div className="admin-review-actions">
+                <button
+                  type="button"
+                  className="btn-ghost px-4 py-2 text-xs"
+                  disabled={deletingId === event.id}
+                  onClick={() => setPendingDelete(event)}
+                >
+                  <span className="material-symbols-rounded text-base">delete</span>
+                  {deletingId === event.id ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(pendingDelete)}
+        title="Delete event?"
+        message={pendingDelete ? `Delete "${pendingDelete.title}"? This will also remove any tickets for this event.` : ''}
+        confirmLabel="Delete Event"
+        loading={Boolean(deletingId)}
+        onCancel={() => setPendingDelete(null)}
+        onConfirm={handleDelete}
+      />
     </DashboardLayout>
   );
 }

@@ -5,10 +5,13 @@ import com.chezsan.backend_event_hub.repository.CategoryRepository;
 import com.chezsan.backend_event_hub.repository.EventRepository;
 import com.chezsan.backend_event_hub.repository.TicketRepository;
 import com.chezsan.backend_event_hub.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -27,7 +30,11 @@ public class DashboardService {
         this.categoryRepository = categoryRepository;
     }
 
-    public Map<String, Object> admin() {
+    public Map<String, Object> admin(AppUser currentUser) {
+        if (currentUser == null || currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can view admin dashboard data");
+        }
+
         long totalEvents = eventRepository.count();
         List<Map<String, Object>> topCategories = categoryRepository.findAll().stream()
                 .map(category -> {
@@ -39,22 +46,34 @@ public class DashboardService {
                 .toList();
 
         List<Map<String, Object>> recentEvents = eventRepository.findTop4ByOrderByIdDesc().stream().map(EventMapper::toMap).toList();
+        List<Map<String, Object>> pendingEvents = eventRepository.findByStatusOrderByIdDesc(EventStatus.PENDING).stream()
+                .map(EventMapper::toMap)
+                .toList();
 
-        return Map.of(
-                "totalUsers", userRepository.count(),
-                "activeEvents", eventRepository.countByStatus(EventStatus.UPCOMING),
-                "ticketsSold", ticketRepository.count(),
-                "platformRevenue", totalRevenue(),
-                "monthlyGrowth", Map.of("users", "+0%", "events", "+0%", "tickets", "+0%", "revenue", "+0%"),
-                "topCategories", topCategories,
-                "recentActivity", recentEvents.stream().map(event -> Map.<String, Object>of(
+        Map<String, Object> data = new LinkedHashMap<>();
+        data.put("totalUsers", userRepository.count());
+        data.put("activeEvents", eventRepository.countByStatus(EventStatus.UPCOMING));
+        data.put("pendingEventsCount", pendingEvents.size());
+        data.put("ticketsSold", ticketRepository.count());
+        data.put("platformRevenue", totalRevenue());
+        data.put("monthlyGrowth", Map.of("users", "+0%", "events", "+0%", "tickets", "+0%", "revenue", "+0%"));
+        data.put("topCategories", topCategories);
+        data.put("recentActivity", pendingEvents.isEmpty()
+                ? recentEvents.stream().map(event -> Map.<String, Object>of(
                         "type", "EVENT_CREATED",
                         "user", event.get("organizer"),
                         "message", "Event listed: " + event.get("title"),
                         "time", "recently"
-                )).toList(),
-                "recentEvents", recentEvents
-        );
+                )).toList()
+                : pendingEvents.stream().limit(5).map(event -> Map.<String, Object>of(
+                        "type", "EVENT_PENDING",
+                        "user", event.get("organizer"),
+                        "message", "New event awaiting review: " + event.get("title"),
+                        "time", "just now"
+                )).toList());
+        data.put("recentEvents", recentEvents);
+        data.put("pendingEvents", pendingEvents);
+        return data;
     }
 
     public Map<String, Object> student(AppUser user) {

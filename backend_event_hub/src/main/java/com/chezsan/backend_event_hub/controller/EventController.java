@@ -44,8 +44,11 @@ public class EventController {
     }
 
     @PostMapping
-    public Map<String, Object> createEvent(@RequestBody Map<String, Object> request) {
-        return eventService.createEvent(request);
+    public Map<String, Object> createEvent(
+            @RequestBody Map<String, Object> request,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        return eventService.createEvent(request, authService.currentUser(authHeader));
     }
 
     @PutMapping("/{id}")
@@ -54,8 +57,11 @@ public class EventController {
     }
 
     @DeleteMapping("/{id}")
-    public Map<String, Object> deleteEvent(@PathVariable Long id) {
-        return eventService.deleteEvent(id);
+    public Map<String, Object> deleteEvent(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        return eventService.deleteEvent(id, authService.currentUser(authHeader));
     }
 
     @PostMapping("/{id}/register")
@@ -64,7 +70,18 @@ public class EventController {
     }
 
     @PostMapping("/{id}/approve")
-    public Map<String, Object> approveEvent(@PathVariable Long id) {
-        return eventService.approveEvent(id);
+    public Map<String, Object> approveEvent(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        return eventService.approveEvent(id, authService.currentUser(authHeader));
+    }
+
+    @PostMapping("/{id}/reject")
+    public Map<String, Object> rejectEvent(
+            @PathVariable Long id,
+            @RequestHeader(value = "Authorization", required = false) String authHeader
+    ) {
+        return eventService.rejectEvent(id, authService.currentUser(authHeader));
     }
 }

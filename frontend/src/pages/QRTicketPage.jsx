@@ -4,6 +4,9 @@ import { QRCodeSVG } from 'qrcode.react';
 import { Download, ArrowLeft, CheckCircle, Share2 } from 'lucide-react';
 import Navbar from '../components/layout/Navbar';
 import { ticketService } from '../api/ticketService';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
+import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+import { useAuth } from '../context/AuthContext';
 
 const STATUS_CONFIG = {
   VALID: { label: 'Valid',   color: 'text-green-400',  bg: 'bg-green-500/10',  border: 'border-green-500/30',  icon: 'check_circle' },
@@ -11,8 +14,19 @@ const STATUS_CONFIG = {
   VOID:  { label: 'Voided', color: 'text-red-400',     bg: 'bg-red-500/10',    border: 'border-red-500/30',    icon: 'cancel' },
 };
 
+function ticketEventCover(ticket) {
+  return {
+    imageGradient: ticket.imageGradient,
+    coverImage: ticket.coverImage,
+    coverPositionX: ticket.coverPositionX,
+    coverPositionY: ticket.coverPositionY,
+    coverZoom: ticket.coverZoom,
+  };
+}
+
 export default function QRTicketPage() {
   const { id } = useParams();
+  const { user } = useAuth();
   const [ticket, setTicket] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -45,12 +59,13 @@ export default function QRTicketPage() {
   }
 
   const status = STATUS_CONFIG[ticket.status] || STATUS_CONFIG.VALID;
+  const cover = ticketEventCover(ticket);
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
-      <Navbar />
+      {!user && <Navbar />}
 
-      <div className="max-w-md mx-auto px-4 pt-20 pb-12">
+      <div className={`max-w-md mx-auto px-4 ${user ? 'pt-6' : 'pt-20'} pb-12`}>
         <Link to="/my-tickets" className="inline-flex items-center gap-2 mt-4 mb-6 text-sm hover:text-primary-400 transition-colors" style={{ color: 'var(--clr-muted)' }}>
           <ArrowLeft size={16} /> My Tickets
         </Link>
@@ -62,6 +77,16 @@ export default function QRTicketPage() {
 
           {/* Main ticket body */}
           <div className="border border-t-0 rounded-b-hero overflow-hidden" style={{ background: 'var(--clr-surface)', borderColor: 'var(--clr-border)' }}>
+            <div
+              className={`ticket-cover-strip event-cover ${hasCustomCover(cover) ? 'has-custom-cover' : ''}`}
+              style={getEventCoverStyle(cover)}
+            >
+              <EventCoverMedia event={cover} />
+              {!hasCustomCover(cover) && (
+                <span className="material-symbols-rounded text-2xl relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
+              )}
+            </div>
+
             {/* Header */}
             <div className="px-6 pt-6 pb-4 border-b" style={{ borderColor: 'var(--clr-border)' }}>
               <div className="flex items-center justify-between mb-3">

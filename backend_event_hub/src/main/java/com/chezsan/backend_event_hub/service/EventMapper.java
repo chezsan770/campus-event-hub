@@ -36,6 +36,10 @@ final class EventMapper {
         out.put("featured", event.getFeatured());
         out.put("tags", event.getTags());
         out.put("imageGradient", event.getImageGradient());
+        out.put("coverImage", event.getCoverImage() == null ? "" : event.getCoverImage());
+        out.put("coverPositionX", event.getCoverPositionX() == null ? 50 : event.getCoverPositionX());
+        out.put("coverPositionY", event.getCoverPositionY() == null ? 50 : event.getCoverPositionY());
+        out.put("coverZoom", event.getCoverZoom() == null ? 100 : event.getCoverZoom());
         return out;
     }
 }

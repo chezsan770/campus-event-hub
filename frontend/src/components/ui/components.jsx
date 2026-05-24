@@ -107,17 +107,29 @@ export function CategoryChip({ label, active, onClick }) {
 // ─── EventRow ─────────────────────────────────────────────────────────────────
 import { Link } from 'react-router-dom';
 import { Calendar, MapPin } from 'lucide-react';
-import { getEventArtStyle } from '../../utils/eventArt';
+import { getEventCoverStyle, hasCustomCover } from '../../utils/eventArt';
+import EventCoverMedia from './EventCoverMedia';
 
 export function EventRow({ event, showStatus }) {
-  const statusColor = event.status === 'UPCOMING' ? 'badge-green' : event.status === 'PAST' ? 'badge-red' : 'badge-orange';
-  const coverStyle = getEventArtStyle(event.imageGradient);
+  const statusColor = event.status === 'UPCOMING'
+    ? 'badge-green'
+    : event.status === 'PAST' || event.status === 'REJECTED'
+      ? 'badge-red'
+      : 'badge-orange';
+  const coverStyle = getEventCoverStyle(event);
 
   return (
-    <div className="flex items-center gap-4 p-3 rounded-lg transition-colors group" style={{ border: '2px solid transparent' }}>
+    <Link
+      to={`/events/${event.id}`}
+      className="flex items-center gap-4 p-3 rounded-lg transition-colors group no-underline cursor-pointer"
+      style={{ border: '2px solid transparent' }}
+    >
       {/* Event mark */}
-      <div className="w-10 h-10 rounded-lg event-cover flex items-center justify-center shrink-0" style={coverStyle}>
-        <span className="material-symbols-rounded text-sm relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
+      <div className={`w-10 h-10 rounded-lg event-cover flex items-center justify-center shrink-0 ${hasCustomCover(event) ? 'has-custom-cover' : ''}`} style={coverStyle}>
+        <EventCoverMedia event={event} />
+        {!hasCustomCover(event) && (
+          <span className="material-symbols-rounded text-sm relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
+        )}
       </div>
 
       {/* Info */}
@@ -140,10 +152,11 @@ export function EventRow({ event, showStatus }) {
       {/* Right side */}
       <div className="flex items-center gap-3 shrink-0">
         {showStatus && <span className={`badge ${statusColor}`}>{event.status}</span>}
-        <Link to={`/events/${event.id}`} className="btn-secondary py-1 px-3 text-xs">
+        {event.isRegistered && <span className="badge badge-blue">REGISTERED</span>}
+        <span className="btn-secondary py-1 px-3 text-xs">
           View
-        </Link>
+        </span>
       </div>
-    </div>
+    </Link>
   );
 }

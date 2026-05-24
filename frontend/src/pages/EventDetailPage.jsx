@@ -4,7 +4,9 @@ import { Calendar, MapPin, Users, Share2, Heart, ArrowLeft, Check } from 'lucide
 import Navbar from '../components/layout/Navbar';
 import { eventService } from '../api/eventService';
 import { useAuth } from '../context/AuthContext';
-import { getEventArtStyle } from '../utils/eventArt';
+import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
+import ConfirmDialog from '../components/ui/ConfirmDialog';
 
 const categoryColors = { blue: 'badge-blue', purple: 'badge-purple', green: 'badge-green', orange: 'badge-orange' };
 
@@ -15,8 +17,13 @@ export default function EventDetailPage() {
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [registering, setRegistering] = useState(false);
+  const [moderating, setModerating] = useState('');
+  const [moderationError, setModerationError] = useState('');
   const [registered, setRegistered] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
 
   useEffect(() => {
     eventService.getEventById(id)
@@ -33,6 +40,43 @@ export default function EventDetailPage() {
       setRegistered(true);
     } finally {
       setRegistering(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (window.history.length > 1) {
+      navigate(-1);
+    } else {
+      navigate('/events');
+    }
+  };
+
+  const handleModeration = async (action) => {
+    setModerationError('');
+    setModerating(action);
+    try {
+      const updated = action === 'approve'
+        ? await eventService.approveEvent(id)
+        : await eventService.rejectEvent(id);
+      setEvent(updated);
+    } catch (err) {
+      setModerationError(err.response?.data?.message || err.message || 'Could not update event status.');
+    } finally {
+      setModerating('');
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleteError('');
+    setDeleting(true);
+    try {
+      await eventService.deleteEvent(event.id);
+      navigate('/events');
+    } catch (err) {
+      setDeleteError(err.response?.data?.message || err.message || 'Could not delete event.');
+    } finally {
+      setDeleting(false);
+      setConfirmDeleteOpen(false);
     }
   };
 
@@ -54,26 +98,36 @@ export default function EventDetailPage() {
   const cat = { label: event.categoryLabel || event.category, color: event.categoryColor || 'blue' };
   const spotsLeft = event.capacity - event.registered;
   const fillPct = Math.min(100, Math.round((event.registered / event.capacity) * 100));
-  const coverStyle = getEventArtStyle(event.imageGradient);
+  const coverStyle = getEventCoverStyle(event);
+  const isApproved = event.status === 'UPCOMING';
+  const isPending = event.status === 'PENDING';
+  const isRejected = event.status === 'REJECTED';
+  const canModerate = user?.role === 'ADMIN' && isPending;
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
-      <Navbar />
+      {!user && <Navbar />}
 
-      <div className="max-w-5xl mx-auto px-4 pt-20 pb-12">
+      <div className={`max-w-5xl mx-auto px-4 ${user ? 'pt-6' : 'pt-20'} pb-12`}>
         {/* Back */}
-        <Link to="/events" className="inline-flex items-center gap-2 mt-4 mb-6 text-sm hover:text-primary-400 transition-colors" style={{ color: 'var(--clr-muted)' }}>
-          <ArrowLeft size={16} /> Back to Events
-        </Link>
+        <button
+          type="button"
+          onClick={handleBack}
+          className="inline-flex items-center gap-2 mt-4 mb-6 text-sm hover:text-primary-400 transition-colors"
+          style={{ color: 'var(--clr-muted)' }}
+        >
+          <ArrowLeft size={16} /> Back
+        </button>
 
         {/* Hero Banner */}
-        <div className="event-detail-hero relative h-56 md:h-72 overflow-hidden mb-6 flex items-end p-6" style={coverStyle}>
+        <div className={`event-detail-hero relative h-56 md:h-72 overflow-hidden mb-6 flex items-end ${hasCustomCover(event) ? 'has-custom-cover' : ''}`} style={coverStyle}>
+          <EventCoverMedia event={event} />
           {event.featured && (
             <span className="absolute top-4 right-4 badge badge-orange">
               <span className="material-symbols-rounded text-xs">star</span> Featured
             </span>
           )}
-          <div>
+          <div className="event-detail-copy">
             <span className={`${categoryColors[cat?.color] || 'badge-blue'} badge mb-2`}>{cat?.label}</span>
             <h1 className="text-2xl md:text-3xl font-black text-white leading-tight">{event.title}</h1>
           </div>
@@ -120,6 +174,53 @@ export default function EventDetailPage() {
           {/* Right – Registration Card */}
           <div className="space-y-4">
             <div className="card p-6 sticky top-20">
+              {canModerate && (
+                <div className="mb-5 p-4 rounded-card border" style={{ background: 'var(--clr-surface-cont)', borderColor: 'var(--clr-border)' }}>
+                  <p className="text-sm font-black mb-3" style={{ color: 'var(--clr-text)' }}>Admin Review</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      className="btn-primary py-2 text-xs"
+                      disabled={Boolean(moderating)}
+                      onClick={() => handleModeration('approve')}
+                    >
+                      <span className="material-symbols-rounded text-base">verified</span>
+                      {moderating === 'approve' ? 'Approving...' : 'Approve'}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-reject py-2 text-xs"
+                      disabled={Boolean(moderating)}
+                      onClick={() => handleModeration('reject')}
+                    >
+                      <span className="material-symbols-rounded text-base">block</span>
+                      {moderating === 'reject' ? 'Rejecting...' : 'Reject'}
+                    </button>
+                  </div>
+                  {moderationError && (
+                    <p className="mt-3 text-xs font-semibold text-red-400">{moderationError}</p>
+                  )}
+                </div>
+              )}
+
+              {user?.role === 'ADMIN' && (
+                <div className="mb-5 p-4 rounded-card border" style={{ background: 'var(--clr-surface-cont)', borderColor: 'var(--clr-border)' }}>
+                  <p className="text-sm font-black mb-3" style={{ color: 'var(--clr-text)' }}>Admin Controls</p>
+                  <button
+                    type="button"
+                    className="btn-reject w-full py-2.5 text-xs"
+                    disabled={deleting}
+                    onClick={() => setConfirmDeleteOpen(true)}
+                  >
+                    <span className="material-symbols-rounded text-base">delete</span>
+                    {deleting ? 'Deleting...' : 'Delete Event'}
+                  </button>
+                  {deleteError && (
+                    <p className="mt-3 text-xs font-semibold text-red-400">{deleteError}</p>
+                  )}
+                </div>
+              )}
+
               <div className="flex items-center justify-between mb-4">
                 <span className="text-2xl font-black text-primary-400">
                   {event.price === 0 ? 'FREE' : `$${event.price}`}
@@ -149,10 +250,14 @@ export default function EventDetailPage() {
                 <div className="flex items-center gap-2 p-3 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-semibold">
                   <Check size={16} /> Successfully Registered!
                 </div>
+              ) : !isApproved ? (
+                <div className="p-3 rounded-lg border text-sm font-black" style={{ background: 'var(--clr-yellow)', borderColor: 'var(--clr-border)', color: 'var(--clr-primary)' }}>
+                  {isRejected ? 'Event rejected by admin' : 'Waiting for admin approval'}
+                </div>
               ) : (
                 <button
                   onClick={handleRegister}
-                  disabled={registering || spotsLeft <= 0}
+                  disabled={registering || spotsLeft <= 0 || !isApproved}
                   className="btn-primary w-full justify-center py-3"
                 >
                   {registering ? 'Registering...' : spotsLeft <= 0 ? 'Event Full' : 'Register Now'}
@@ -174,6 +279,15 @@ export default function EventDetailPage() {
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title="Delete event?"
+        message={`Delete "${event.title}"? This will also remove any tickets for this event.`}
+        confirmLabel="Delete Event"
+        loading={deleting}
+        onCancel={() => setConfirmDeleteOpen(false)}
+        onConfirm={handleDelete}
+      />
     </div>
   );
 }

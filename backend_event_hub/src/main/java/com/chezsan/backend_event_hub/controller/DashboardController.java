@@ -19,8 +19,8 @@ public class DashboardController {
     }
 
     @GetMapping("/admin")
-    public Map<String, Object> admin() {
-        return dashboardService.admin();
+    public Map<String, Object> admin(@RequestHeader(value = "Authorization", required = false) String authHeader) {
+        return dashboardService.admin(authService.currentUser(authHeader));
     }
 
     @GetMapping("/student")

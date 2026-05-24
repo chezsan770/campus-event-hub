@@ -3,6 +3,7 @@ package com.chezsan.backend_event_hub.service;
 import com.chezsan.backend_event_hub.model.*;
 import com.chezsan.backend_event_hub.repository.CategoryRepository;
 import com.chezsan.backend_event_hub.repository.EventRepository;
+import com.chezsan.backend_event_hub.repository.TicketRepository;
 import com.chezsan.backend_event_hub.repository.UserRepository;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.domain.Page;
@@ -27,11 +28,13 @@ public class EventService {
     private final EventRepository eventRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final TicketRepository ticketRepository;
 
-    public EventService(EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository) {
+    public EventService(EventRepository eventRepository, CategoryRepository categoryRepository, UserRepository userRepository, TicketRepository ticketRepository) {
         this.eventRepository = eventRepository;
         this.categoryRepository = categoryRepository;
         this.userRepository = userRepository;
+        this.ticketRepository = ticketRepository;
     }
 
     public Map<String, Object> getEvents(int page, int size, String category, String search, String status) {
@@ -50,6 +53,7 @@ public class EventService {
         return eventRepository.findByFeaturedTrue(PageRequest.of(0, 5, Sort.by(Sort.Direction.ASC, "date")))
                 .getContent()
                 .stream()
+                .filter(event -> event.getStatus() == EventStatus.UPCOMING)
                 .map(EventMapper::toMap)
                 .toList();
     }
@@ -68,9 +72,15 @@ public class EventService {
                 .toList();
     }
 
-    public Map<String, Object> createEvent(Map<String, Object> request) {
+    public Map<String, Object> createEvent(Map<String, Object> request, AppUser currentUser) {
         Event event = new Event();
         apply(event, request);
+        if (currentUser != null) {
+            event.setOrganizer(currentUser);
+            event.setStatus(currentUser.getRole() == UserRole.ADMIN ? EventStatus.UPCOMING : EventStatus.PENDING);
+        } else {
+            event.setStatus(EventStatus.PENDING);
+        }
         return EventMapper.toMap(eventRepository.save(event));
     }
 
@@ -80,22 +90,44 @@ public class EventService {
         return EventMapper.toMap(eventRepository.save(event));
     }
 
-    public Map<String, Object> deleteEvent(Long id) {
+    @Transactional
+    public Map<String, Object> deleteEvent(Long id, AppUser currentUser) {
+        if (currentUser == null || currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can delete events");
+        }
         Event event = findEvent(id);
+        ticketRepository.deleteByEventId(id);
         eventRepository.delete(event);
         return Map.of("message", "Event deleted", "id", id);
     }
 
     @Transactional
-    public Map<String, Object> approveEvent(Long id) {
+    public Map<String, Object> approveEvent(Long id, AppUser currentUser) {
+        if (currentUser == null || currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can approve events");
+        }
         Event event = findEvent(id);
         event.setStatus(EventStatus.UPCOMING);
         return EventMapper.toMap(event);
     }
 
     @Transactional
+    public Map<String, Object> rejectEvent(Long id, AppUser currentUser) {
+        if (currentUser == null || currentUser.getRole() != UserRole.ADMIN) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only admins can reject events");
+        }
+        Event event = findEvent(id);
+        event.setStatus(EventStatus.REJECTED);
+        event.setFeatured(false);
+        return EventMapper.toMap(event);
+    }
+
+    @Transactional
     public Event incrementRegistration(Long id) {
         Event event = findEvent(id);
+        if (event.getStatus() != EventStatus.UPCOMING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This event is not approved for registration");
+        }
         if (event.getRegistered() >= event.getCapacity()) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Event is full");
         }
@@ -116,6 +148,8 @@ public class EventService {
             }
             if (status != null && !status.isBlank()) {
                 predicates.add(cb.equal(root.get("status"), parseStatus(status)));
+            } else {
+                predicates.add(cb.equal(root.get("status"), EventStatus.UPCOMING));
             }
             if (search != null && !search.isBlank()) {
                 String like = "%" + search.toLowerCase() + "%";
@@ -145,6 +179,10 @@ public class EventService {
         event.setFeatured(booleanValue(request.getOrDefault("featured", false)));
         event.setTags(tags(request.get("tags")));
         event.setImageGradient(value(request.getOrDefault("imageGradient", "from-blue-600 to-purple-600")));
+        event.setCoverImage(value(request.get("coverImage")));
+        event.setCoverPositionX(clamp(intValue(request.getOrDefault("coverPositionX", 50)), 0, 100));
+        event.setCoverPositionY(clamp(intValue(request.getOrDefault("coverPositionY", 50)), 0, 100));
+        event.setCoverZoom(clamp(intValue(request.getOrDefault("coverZoom", 100)), 100, 400));
 
         Long organizerId = longValue(request.get("organizerId"));
         if (organizerId != null) {
@@ -184,6 +222,10 @@ public class EventService {
     private int intValue(Object object) {
         if (object instanceof Number number) return number.intValue();
         return Integer.parseInt(object.toString());
+    }
+
+    private int clamp(int value, int min, int max) {
+        return Math.max(min, Math.min(max, value));
     }
 
     private BigDecimal decimalValue(Object object) {

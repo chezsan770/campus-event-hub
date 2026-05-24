@@ -12,6 +12,7 @@ import AdminDashboard    from '../pages/AdminDashboard';
 import OrganizerDashboard from '../pages/OrganizerDashboard';
 import CreateEventPage   from '../pages/CreateEventPage';
 import QRTicketPage      from '../pages/QRTicketPage';
+import AppShell          from '../components/layout/AppShell';
 
 // ─── Route Guards ─────────────────────────────────────────────────────────────
 function RequireAuth({ children }) {
@@ -32,8 +33,21 @@ function RequireRole({ children, roles }) {
 import { Link } from 'react-router-dom';
 import Navbar from '../components/layout/Navbar';
 import { ticketService } from '../api/ticketService';
+import EventCoverMedia from '../components/ui/EventCoverMedia';
+import { getEventCoverStyle, hasCustomCover } from '../utils/eventArt';
+
+function ticketEventCover(ticket) {
+  return {
+    imageGradient: ticket.imageGradient,
+    coverImage: ticket.coverImage,
+    coverPositionX: ticket.coverPositionX,
+    coverPositionY: ticket.coverPositionY,
+    coverZoom: ticket.coverZoom,
+  };
+}
 
 function MyTicketsPage() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
 
   useEffect(() => {
@@ -44,31 +58,42 @@ function MyTicketsPage() {
 
   return (
     <div className="min-h-screen" style={{ background: 'var(--clr-bg)' }}>
-      <Navbar />
-      <div className="max-w-2xl mx-auto px-4 pt-24 pb-12">
+      {!user && <Navbar />}
+      <div className={`max-w-2xl mx-auto px-4 ${user ? 'pt-8' : 'pt-24'} pb-12`}>
         <h1 className="text-headline-md font-bold mb-6" style={{ color: 'var(--clr-text)' }}>My Tickets</h1>
         <div className="space-y-4">
           {tickets.map(ticket => (
             <Link
               key={ticket.id}
               to={`/tickets/${ticket.id}`}
-              className="card block p-5 hover:border-primary-500/50 transition-all"
+              className="card flex gap-4 p-5 hover:border-primary-500/50 transition-all no-underline"
             >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-base mb-1" style={{ color: 'var(--clr-text)' }}>{ticket.eventTitle}</h3>
+              <div
+                className={`ticket-event-thumb event-cover ${hasCustomCover(ticketEventCover(ticket)) ? 'has-custom-cover' : ''}`}
+                style={getEventCoverStyle(ticketEventCover(ticket))}
+              >
+                <EventCoverMedia event={ticketEventCover(ticket)} />
+                {!hasCustomCover(ticketEventCover(ticket)) && (
+                  <span className="material-symbols-rounded text-sm relative z-10" style={{ color: 'var(--clr-primary)' }}>event</span>
+                )}
+              </div>
+              <div className="min-w-0 flex-1">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-base mb-1 truncate" style={{ color: 'var(--clr-text)' }}>{ticket.eventTitle}</h3>
                   <p className="text-sm" style={{ color: 'var(--clr-muted)' }}>
                     {new Date(ticket.eventDate).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })} • {ticket.eventTime}
                   </p>
-                  <p className="text-sm mt-0.5" style={{ color: 'var(--clr-muted)' }}>{ticket.location}</p>
+                  <p className="text-sm mt-0.5 truncate" style={{ color: 'var(--clr-muted)' }}>{ticket.location}</p>
                 </div>
-                <span className={`badge ${ticket.status === 'VALID' ? 'badge-green' : ticket.status === 'USED' ? 'bg-slate-500/15 text-slate-400' : 'badge-red'}`}>
+                <span className={`badge shrink-0 ${ticket.status === 'VALID' ? 'badge-green' : ticket.status === 'USED' ? 'bg-slate-500/15 text-slate-400' : 'badge-red'}`}>
                   {ticket.status}
                 </span>
               </div>
-              <div className="mt-3 flex items-center justify-between">
-                <p className="text-xs font-mono" style={{ color: 'var(--clr-muted)' }}>{ticket.id}</p>
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="text-xs font-mono truncate" style={{ color: 'var(--clr-muted)' }}>{ticket.id}</p>
                 <span className="text-xs text-primary-400 font-semibold">View QR →</span>
+              </div>
               </div>
             </Link>
           ))}
@@ -100,12 +125,12 @@ export default function AppRouter() {
       <Route path="/"           element={<LandingPage />} />
       <Route path="/login"      element={<LoginPage />} />
       <Route path="/register"   element={<RegisterPage />} />
-      <Route path="/events"     element={<EventsPage />} />
-      <Route path="/events/:id" element={<EventDetailPage />} />
+      <Route path="/events"     element={<AppShell><EventsPage /></AppShell>} />
+      <Route path="/events/:id" element={<AppShell><EventDetailPage /></AppShell>} />
 
       {/* Authenticated */}
-      <Route path="/my-tickets" element={<RequireAuth><MyTicketsPage /></RequireAuth>} />
-      <Route path="/tickets/:id" element={<RequireAuth><QRTicketPage /></RequireAuth>} />
+      <Route path="/my-tickets" element={<RequireAuth><AppShell><MyTicketsPage /></AppShell></RequireAuth>} />
+      <Route path="/tickets/:id" element={<RequireAuth><AppShell><QRTicketPage /></AppShell></RequireAuth>} />
 
       {/* Student */}
       <Route path="/dashboard/student" element={<RequireAuth><StudentDashboard /></RequireAuth>} />

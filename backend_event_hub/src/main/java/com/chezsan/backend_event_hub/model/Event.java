@@ -61,6 +61,13 @@ public class Event {
 
     private String imageGradient;
 
+    @Column(columnDefinition = "TEXT")
+    private String coverImage;
+
+    private Integer coverPositionX = 50;
+    private Integer coverPositionY = 50;
+    private Integer coverZoom = 100;
+
     public Long getId() {
         return id;
     }
@@ -195,5 +202,37 @@ public class Event {
 
     public void setImageGradient(String imageGradient) {
         this.imageGradient = imageGradient;
+    }
+
+    public String getCoverImage() {
+        return coverImage;
+    }
+
+    public void setCoverImage(String coverImage) {
+        this.coverImage = coverImage;
+    }
+
+    public Integer getCoverPositionX() {
+        return coverPositionX;
+    }
+
+    public void setCoverPositionX(Integer coverPositionX) {
+        this.coverPositionX = coverPositionX;
+    }
+
+    public Integer getCoverPositionY() {
+        return coverPositionY;
+    }
+
+    public void setCoverPositionY(Integer coverPositionY) {
+        this.coverPositionY = coverPositionY;
+    }
+
+    public Integer getCoverZoom() {
+        return coverZoom;
+    }
+
+    public void setCoverZoom(Integer coverZoom) {
+        this.coverZoom = coverZoom;
     }
 }
